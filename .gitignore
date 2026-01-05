@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+client/dist/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+server/db/*.db
+server/db/*.db-wal
+server/db/*.db-shm
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Vercel
+.vercel
+.env*.local

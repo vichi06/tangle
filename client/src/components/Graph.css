@@ -1,0 +1,223 @@
+.graph-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.graph-svg {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+}
+
+/* Graph buttons container */
+.graph-buttons {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.graph-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.graph-button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  transform: scale(1.05);
+}
+
+.graph-button:active {
+  transform: scale(0.95);
+}
+
+/* Settings panel */
+.settings-panel {
+  position: absolute;
+  bottom: 80px;
+  right: 20px;
+  width: 220px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-header span {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.settings-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.settings-close:hover {
+  color: var(--text-primary);
+}
+
+.settings-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.settings-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.settings-panel input[type="range"] {
+  width: 100%;
+  margin-bottom: 14px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--border-color);
+  border-radius: 2px;
+  outline: none;
+}
+
+.settings-panel input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.settings-panel input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.settings-panel input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.settings-reset {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.settings-reset:hover {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
+
+.link {
+  stroke: var(--edge-color);
+  transition: stroke 0.2s ease, stroke-width 0.2s ease;
+  cursor: pointer;
+}
+
+.link.intensity-kiss { stroke: #f472b6; }
+.link.intensity-cuddle { stroke: #a78bfa; }
+.link.intensity-couple { stroke: #f43f5e; }
+.link.intensity-hidden {
+  stroke: #6b7280;
+  stroke-dasharray: 4 4;
+}
+
+.link.highlighted,
+.link.connected {
+  stroke: var(--edge-hover) !important;
+}
+
+.link.dimmed {
+  stroke: var(--border-color) !important;
+  opacity: 0.3;
+}
+
+.node {
+  cursor: pointer;
+}
+
+.node-bg {
+  fill: var(--bg-secondary);
+}
+
+.node-border {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 2;
+  transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+.node.highlighted .node-border {
+  stroke: var(--node-color);
+  stroke-width: 3;
+}
+
+.node.current-user .node-border {
+  stroke: #7eb8da;
+  stroke-width: 3;
+}
+
+.node.current-user.highlighted .node-border {
+  stroke: #a8d4f0;
+  stroke-width: 4;
+}
+
+.node-initial {
+  fill: var(--text-secondary);
+  pointer-events: none;
+  user-select: none;
+}
+
+.node image {
+  filter: grayscale(100%);
+  transition: filter 0.2s ease;
+}
+
+.node.highlighted image {
+  filter: grayscale(0%);
+}

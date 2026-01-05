@@ -1,0 +1,142 @@
+import express from 'express';
+import db from '../database.js';
+
+const router = express.Router();
+
+// Get all relationships with person names
+router.get('/', (req, res) => {
+  try {
+    const relationships = db.prepare(`
+      SELECT
+        r.*,
+        p1.first_name as person1_first_name,
+        p1.last_name as person1_last_name,
+        p1.avatar as person1_avatar,
+        p2.first_name as person2_first_name,
+        p2.last_name as person2_last_name,
+        p2.avatar as person2_avatar
+      FROM relationships r
+      JOIN people p1 ON r.person1_id = p1.id
+      JOIN people p2 ON r.person2_id = p2.id
+      ORDER BY r.created_at DESC
+    `).all();
+    res.json(relationships);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create relationship
+router.post('/', (req, res) => {
+  const { person1_id, person2_id, intensity, date, context } = req.body;
+
+  if (!person1_id || !person2_id) {
+    return res.status(400).json({ error: 'Both person IDs are required' });
+  }
+
+  if (person1_id === person2_id) {
+    return res.status(400).json({ error: 'Cannot create relationship with same person' });
+  }
+
+  // Ensure consistent ordering (lower ID first)
+  const [p1, p2] = person1_id < person2_id
+    ? [person1_id, person2_id]
+    : [person2_id, person1_id];
+
+  try {
+    // Check if people exist
+    const person1 = db.prepare('SELECT id FROM people WHERE id = ?').get(p1);
+    const person2 = db.prepare('SELECT id FROM people WHERE id = ?').get(p2);
+
+    if (!person1 || !person2) {
+      return res.status(400).json({ error: 'One or both people not found' });
+    }
+
+    // Check if relationship already exists
+    const existing = db.prepare(
+      'SELECT id FROM relationships WHERE person1_id = ? AND person2_id = ?'
+    ).get(p1, p2);
+
+    if (existing) {
+      return res.status(400).json({ error: 'Relationship already exists' });
+    }
+
+    const stmt = db.prepare(
+      'INSERT INTO relationships (person1_id, person2_id, intensity, date, context) VALUES (?, ?, ?, ?, ?)'
+    );
+    const result = stmt.run(p1, p2, intensity || 'kiss', date || null, context || null);
+
+    const relationship = db.prepare(`
+      SELECT
+        r.*,
+        p1.first_name as person1_first_name,
+        p1.last_name as person1_last_name,
+        p1.avatar as person1_avatar,
+        p2.first_name as person2_first_name,
+        p2.last_name as person2_last_name,
+        p2.avatar as person2_avatar
+      FROM relationships r
+      JOIN people p1 ON r.person1_id = p1.id
+      JOIN people p2 ON r.person2_id = p2.id
+      WHERE r.id = ?
+    `).get(result.lastInsertRowid);
+
+    res.status(201).json(relationship);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update relationship
+router.put('/:id', (req, res) => {
+  const { intensity, date, context } = req.body;
+  try {
+    const existing = db.prepare('SELECT * FROM relationships WHERE id = ?').get(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Relationship not found' });
+    }
+
+    const stmt = db.prepare('UPDATE relationships SET intensity = ?, date = ?, context = ? WHERE id = ?');
+    stmt.run(
+      intensity !== undefined ? intensity : existing.intensity,
+      date !== undefined ? date : existing.date,
+      context !== undefined ? context : existing.context,
+      req.params.id
+    );
+
+    const relationship = db.prepare(`
+      SELECT
+        r.*,
+        p1.first_name as person1_first_name,
+        p1.last_name as person1_last_name,
+        p1.avatar as person1_avatar,
+        p2.first_name as person2_first_name,
+        p2.last_name as person2_last_name,
+        p2.avatar as person2_avatar
+      FROM relationships r
+      JOIN people p1 ON r.person1_id = p1.id
+      JOIN people p2 ON r.person2_id = p2.id
+      WHERE r.id = ?
+    `).get(req.params.id);
+
+    res.json(relationship);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete relationship
+router.delete('/:id', (req, res) => {
+  try {
+    const existing = db.prepare('SELECT * FROM relationships WHERE id = ?').get(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Relationship not found' });
+    }
+    db.prepare('DELETE FROM relationships WHERE id = ?').run(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+export default router;

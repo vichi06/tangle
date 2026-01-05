@@ -1,0 +1,141 @@
+.avatar-upload-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.avatar-trigger {
+  border-radius: 50%;
+  cursor: pointer;
+  overflow: hidden;
+  border: 2px dashed var(--border-color);
+  transition: border-color 0.2s ease;
+}
+
+.avatar-trigger:hover {
+  border-color: var(--text-secondary);
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-size: 12px;
+  gap: 2px;
+}
+
+.avatar-empty span:first-child {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.avatar-options {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 100;
+  min-width: 120px;
+}
+
+.avatar-options button {
+  padding: 8px 12px;
+  font-size: 13px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.avatar-options .remove-option {
+  color: #e57373;
+  border-color: transparent;
+  background: transparent;
+}
+
+.avatar-options .remove-option:hover {
+  background: rgba(229, 115, 115, 0.1);
+}
+
+/* Camera modal */
+.camera-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.camera-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.camera-preview {
+  width: 300px;
+  height: 300px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid var(--text-primary);
+}
+
+.camera-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.capture-btn {
+  padding: 12px 24px;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: none;
+  font-weight: 500;
+}
+
+.cancel-btn {
+  padding: 12px 24px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+}
+
+/* Loading state */
+.avatar-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+}
+
+.avatar-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--text-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,154 @@
+.profile-edit-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  padding: 20px;
+}
+
+.profile-edit-modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 32px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.profile-edit-modal h2 {
+  text-align: center;
+  font-size: 20px;
+  margin-bottom: 24px;
+}
+
+.profile-avatar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-form .name-row {
+  display: flex;
+  gap: 12px;
+}
+
+.profile-form .name-row input {
+  flex: 1;
+}
+
+.profile-form input,
+.profile-form textarea {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+}
+
+.profile-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.profile-error {
+  color: #e57373;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 12px;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.profile-actions .cancel-btn {
+  flex: 1;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border: none;
+}
+
+.profile-actions .save-btn {
+  flex: 2;
+  padding: 12px;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: none;
+  font-weight: 500;
+}
+
+.profile-actions .save-btn:hover {
+  background: var(--text-secondary);
+}
+
+.profile-actions .save-btn:disabled {
+  background: var(--border-color);
+  color: var(--text-muted);
+}
+
+/* CIV Toggle - Mobile friendly */
+.profile-form .civ-toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  margin: 4px 0;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.profile-form .civ-toggle-label {
+  font-size: 15px;
+  color: var(--text-primary);
+  font-weight: 500;
+  pointer-events: none;
+}
+
+.profile-form .civ-toggle-track {
+  position: relative;
+  display: block;
+  width: 56px;
+  height: 32px;
+  background: var(--bg-primary);
+  border-radius: 16px;
+  border: 2px solid var(--border-color);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.profile-form .civ-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.profile-form .civ-toggle-container.active .civ-toggle-track {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.profile-form .civ-toggle-container.active .civ-toggle-thumb {
+  left: 27px;
+  background: #fff;
+}
