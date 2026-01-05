@@ -133,7 +133,7 @@ function forceUncross(links) {
 // Initialize nodes in circular layout
 function initializeCircularLayout(nodes, width, height) {
   const count = nodes.length;
-  const radius = Math.max(100, count * 30);
+  const radius = Math.max(80, count * 12);
   nodes.forEach((node, i) => {
     const angle = (2 * Math.PI * i) / count;
     node.x = width / 2 + radius * Math.cos(angle);
@@ -143,6 +143,22 @@ function initializeCircularLayout(nodes, width, height) {
     node.fx = null;
     node.fy = null;
   });
+}
+
+// Find a connected existing node to position new nodes near
+function findConnectedExistingNode(newNodeId, links, allNodes) {
+  const connectedLink = links.find(
+    l => (l.source === newNodeId || l.source.id === newNodeId ||
+          l.target === newNodeId || l.target.id === newNodeId)
+  );
+
+  if (!connectedLink) return null;
+
+  const connectedId = (connectedLink.source === newNodeId || connectedLink.source.id === newNodeId)
+    ? (connectedLink.target.id ?? connectedLink.target)
+    : (connectedLink.source.id ?? connectedLink.source);
+
+  return allNodes.find(n => n.id === connectedId && n.x !== undefined);
 }
 
 // Calculate transform to fit nodes in viewport
@@ -181,16 +197,21 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
   const simulationRef = useRef(null);
   const zoomRef = useRef(null);
   const gRef = useRef(null);
+  const hasFittedRef = useRef(false);
 
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
   const [dragging, setDragging] = useState(null);
   const settingsRef = useRef(settings);
+  const nodePositionsRef = useRef(new Map()); // Persist node positions across renders
+  const linkIdsRef = useRef(new Set()); // Track existing link IDs
+  const animatedLinksRef = useRef(new Set()); // Track which links have been animated
 
   const graphData = useMemo(() => {
     if (people.length === 0) return { nodes: [], links: [] };
 
     const metrics = calculateMetrics(people, relationships);
+    const storedPositions = nodePositionsRef.current;
 
     const nodes = people.map(person => {
       const m = metrics.get(person.id) || { degree: 0, betweenness: 0 };
@@ -199,6 +220,9 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
 
       const sizeScore = normalizedDegree * DEGREE_WEIGHT + normalizedBetweenness * BETWEENNESS_WEIGHT;
       const size = MIN_NODE_SIZE + sizeScore * (MAX_NODE_SIZE - MIN_NODE_SIZE);
+
+      // Restore position if this node existed before
+      const storedPos = storedPositions.get(person.id);
 
       return {
         id: person.id,
@@ -209,10 +233,18 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         isCiv: person.is_civ,
         degree: m.degree,
         betweenness: m.betweenness,
-        size
+        size,
+        // Preserve position for existing nodes
+        x: storedPos?.x,
+        y: storedPos?.y,
+        vx: storedPos?.vx ?? 0,
+        vy: storedPos?.vy ?? 0,
+        // Mark as new if no stored position
+        isNew: !storedPos
       };
     });
 
+    const existingLinkIds = linkIdsRef.current;
     const links = relationships.map(rel => ({
       id: rel.id,
       source: rel.person1_id,
@@ -221,42 +253,41 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       date: rel.date,
       context: rel.context,
       person1Name: `${rel.person1_first_name} ${rel.person1_last_name}`,
-      person2Name: `${rel.person2_first_name} ${rel.person2_last_name}`
+      person2Name: `${rel.person2_first_name} ${rel.person2_last_name}`,
+      isNew: !existingLinkIds.has(rel.id)
     }));
 
     return { nodes, links };
   }, [people, relationships]);
 
-  const fitToScreen = useCallback((animate = false) => {
-    if (!svgRef.current || !zoomRef.current || graphData.nodes.length === 0) return;
-
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const transform = calculateFitTransform(graphData.nodes, width, height);
-    const svg = d3.select(svgRef.current);
-
-    if (animate) {
-      svg.transition().duration(500).call(zoomRef.current.transform, transform);
-    } else {
-      svg.call(zoomRef.current.transform, transform);
-    }
-  }, [graphData.nodes]);
-
   const handleReset = useCallback(() => {
-    if (!simulationRef.current) return;
+    if (!simulationRef.current || !svgRef.current || !zoomRef.current) return;
 
     const width = window.innerWidth;
     const height = window.innerHeight;
 
     initializeCircularLayout(graphData.nodes, width, height);
+
+    // Update position cache with new circular positions
+    graphData.nodes.forEach(node => {
+      nodePositionsRef.current.set(node.id, {
+        x: node.x,
+        y: node.y,
+        vx: node.vx,
+        vy: node.vy
+      });
+    });
+
     simulationRef.current.alpha(1).restart();
 
-    // Use simulation end event for fit
-    simulationRef.current.on('end.fit', () => {
-      fitToScreen(true);
-      simulationRef.current.on('end.fit', null);
-    });
-  }, [graphData.nodes, fitToScreen]);
+    // Zoom immediately in parallel with simulation
+    const transform = calculateFitTransform(graphData.nodes, width, height);
+    d3.select(svgRef.current)
+      .transition()
+      .duration(750)
+      .ease(d3.easeCubicOut)
+      .call(zoomRef.current.transform, transform);
+  }, [graphData.nodes]);
 
   // Update simulation when settings change
   useEffect(() => {
@@ -289,22 +320,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     const width = window.innerWidth;
     const height = window.innerHeight;
 
-    svg.selectAll('*').remove();
-
-    const g = svg.append('g');
-    gRef.current = g;
-
-    // Zoom behavior
-    const zoom = d3.zoom()
-      .scaleExtent([0.1, 4])
-      .on('zoom', (event) => g.attr('transform', event.transform));
-
-    svg.call(zoom);
-    zoomRef.current = zoom;
-
-    // Initialize positions
-    initializeCircularLayout(graphData.nodes, width, height);
-
     // Intensity stroke widths
     const intensityStroke = { kiss: 1, cuddle: 3, couple: 5, hidden: 1 };
 
@@ -335,33 +350,115 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       }, { x: event.clientX ?? event.touches?.[0]?.clientX, y: event.clientY ?? event.touches?.[0]?.clientY });
     };
 
-    // Background click to dismiss (touch)
-    if (isTouchDevice) {
-      svg.on('click', (event) => {
-        if (event.target === svgRef.current) {
-          g.selectAll('.node').classed('highlighted', false);
-          g.selectAll('.link').classed('highlighted connected dimmed', false);
-          onHideTooltip();
-        }
-      });
+    // Initialize container only once
+    let g = gRef.current;
+    let isFirstRender = false;
+    if (!g) {
+      isFirstRender = true;
+      svg.selectAll('*').remove();
+      g = svg.append('g');
+      gRef.current = g;
+
+      // Create groups for links and nodes
+      g.append('g').attr('class', 'links');
+      g.append('g').attr('class', 'nodes');
+
+      // Zoom behavior
+      const zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => g.attr('transform', event.transform));
+      svg.call(zoom);
+      zoomRef.current = zoom;
+
+      // Background click to dismiss (touch)
+      if (isTouchDevice) {
+        svg.on('click', (event) => {
+          if (event.target === svgRef.current) {
+            g.selectAll('.node').classed('highlighted', false);
+            g.selectAll('.link').classed('highlighted connected dimmed', false);
+            onHideTooltip();
+          }
+        });
+      }
     }
 
-    // Links
-    const linksGroup = g.append('g').attr('class', 'links');
+    // Initialize positions for new nodes only
+    graphData.nodes.forEach((node) => {
+      if (node.x === undefined || node.y === undefined) {
+        // Find connected existing node for better placement
+        const connected = findConnectedExistingNode(node.id, graphData.links, graphData.nodes);
+        if (connected && connected.x !== undefined) {
+          // Place at a nice distance from connected node
+          const angle = Math.random() * 2 * Math.PI;
+          const distance = 80 + Math.random() * 40;
+          node.x = connected.x + Math.cos(angle) * distance;
+          node.y = connected.y + Math.sin(angle) * distance;
+        } else {
+          // Fallback to circular layout position
+          const count = graphData.nodes.length;
+          const idx = graphData.nodes.indexOf(node);
+          const radius = Math.max(80, count * 12);
+          const angle = (2 * Math.PI * idx) / count;
+          node.x = width / 2 + radius * Math.cos(angle);
+          node.y = height / 2 + radius * Math.sin(angle);
+        }
+        node.vx = 0;
+        node.vy = 0;
+        // Only animate if not first render (page load)
+        if (!isFirstRender) {
+          // Fix position during animation, will be released after
+          node.fx = node.x;
+          node.fy = node.y;
+          node._isAnimatingIn = true;
+        }
+      }
+    });
 
-    const link = linksGroup.selectAll('line.link-visible')
-      .data(graphData.links)
-      .join('line')
+    // Set zoom transform on first render
+    if (isFirstRender && !hasFittedRef.current) {
+      hasFittedRef.current = true;
+      const initialTransform = calculateFitTransform(graphData.nodes, width, height);
+      svg.call(zoomRef.current.transform, initialTransform);
+    }
+
+    // === LINKS WITH ENTER/UPDATE/EXIT ===
+    const visibleLinks = graphData.links.filter(l => l.intensity !== 'hidden');
+    const linksGroup = g.select('.links');
+
+    // Data join for visible links with key function
+    const linkSelection = linksGroup.selectAll('line.link-visible')
+      .data(visibleLinks, d => d.id);
+
+    // EXIT: Remove old links
+    linkSelection.exit().remove();
+
+    // ENTER: New links
+    const linkEnter = linkSelection.enter()
+      .append('line')
       .attr('class', d => `link-visible link intensity-${d.intensity}`)
-      .attr('stroke-width', d => intensityStroke[d.intensity] || 1);
+      .attr('stroke-width', d => intensityStroke[d.intensity] || 1)
+      .each(function(d) {
+        // Mark for animation only if not first render
+        this._animateIn = d.isNew && !isFirstRender;
+      });
 
-    const linkHitArea = linksGroup.selectAll('line.link-hit')
-      .data(graphData.links)
-      .join('line')
+    // Merge for updates
+    const link = linkEnter.merge(linkSelection);
+
+    // Hit areas for links
+    const linkHitSelection = linksGroup.selectAll('line.link-hit')
+      .data(visibleLinks, d => d.id);
+
+    linkHitSelection.exit().remove();
+
+    const linkHitEnter = linkHitSelection.enter()
+      .append('line')
       .attr('class', 'link-hit')
       .attr('stroke', 'transparent')
       .attr('stroke-width', 20)
       .style('cursor', 'pointer');
+
+    const linkHitArea = linkHitEnter.merge(linkHitSelection);
 
     // Link events
     const handleLinkInteraction = (event, d, isEnter) => {
@@ -386,67 +483,150 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         .on('mouseleave', (event, d) => handleLinkInteraction(event, d, false));
     }
 
-    // Nodes
-    const node = g.append('g')
-      .attr('class', 'nodes')
-      .selectAll('g')
-      .data(graphData.nodes)
-      .join('g')
-      .attr('class', d => d.id === currentUserId ? 'node current-user' : 'node');
+    // === NODES WITH ENTER/UPDATE/EXIT ===
+    const nodesGroup = g.select('.nodes');
 
-    // Clip paths for avatars
-    node.append('clipPath')
-      .attr('id', d => `clip-${d.id}`)
-      .append('circle')
-      .attr('r', d => d.size / 2);
+    const nodeSelection = nodesGroup.selectAll('g.node')
+      .data(graphData.nodes, d => d.id);
 
-    // Node background
-    node.append('circle')
-      .attr('class', 'node-bg')
-      .attr('r', d => d.size / 2);
+    // EXIT: Remove old nodes with scale animation
+    nodeSelection.exit()
+      .transition()
+      .duration(500)
+      .ease(d3.easeCubicIn)
+      .attr('transform', d => `translate(${d.x},${d.y}) scale(0)`)
+      .remove();
 
-    // Avatar images
-    node.filter(d => d.avatar)
-      .append('image')
-      .attr('href', d => d.avatar)
-      .attr('x', d => -d.size / 2)
-      .attr('y', d => -d.size / 2)
-      .attr('width', d => d.size)
-      .attr('height', d => d.size)
-      .attr('clip-path', d => `url(#clip-${d.id})`)
-      .attr('preserveAspectRatio', 'xMidYMid slice');
-
-    // Fallback initials
-    node.filter(d => !d.avatar)
-      .append('text')
-      .attr('class', 'node-initial')
-      .attr('text-anchor', 'middle')
-      .attr('dominant-baseline', 'central')
-      .attr('font-size', d => d.size * 0.4)
-      .text(d => d.firstName.charAt(0).toUpperCase());
-
-    // Node border
-    node.append('circle')
-      .attr('class', 'node-border')
-      .attr('r', d => d.size / 2);
-
-    // CIV badge
-    const civBadge = node.filter(d => d.isCiv == 1 || d.isCiv === true)
+    // ENTER: New nodes - position group follows simulation, inner group handles scale
+    const nodeEnter = nodeSelection.enter()
       .append('g')
-      .attr('class', 'verified-badge')
-      .attr('transform', d => `translate(${d.size / 2 - d.size * 0.1}, ${-d.size / 2 + d.size * 0.1})`);
+      .attr('class', d => d.id === currentUserId ? 'node current-user' : 'node')
+      .attr('transform', d => `translate(${d.x},${d.y})`);
 
-    civBadge.append('circle')
-      .attr('r', d => d.size * 0.2)
-      .attr('fill', '#1d9bf0');
+    // Add all node sub-elements to entering nodes (wrapped in scale group)
+    nodeEnter.each(function(d) {
+      const nodeG = d3.select(this);
 
-    civBadge.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dominant-baseline', 'central')
-      .attr('fill', 'white')
-      .attr('font-size', d => d.size * 0.14)
-      .attr('font-weight', '700')
-      .text('CIV');
+      // Inner group for scale animation (starts at scale 0 only if animating)
+      const scaleGroup = nodeG.append('g')
+        .attr('class', 'node-scale-group')
+        .attr('transform', d._isAnimatingIn ? 'scale(0)' : 'scale(1)');
+
+      // Clip path
+      scaleGroup.append('clipPath')
+        .attr('id', `clip-${d.id}`)
+        .append('circle')
+        .attr('r', d.size / 2);
+
+      // Background circle
+      scaleGroup.append('circle')
+        .attr('class', 'node-bg')
+        .attr('r', d.size / 2);
+
+      // Avatar or initials
+      if (d.avatar) {
+        scaleGroup.append('image')
+          .attr('href', d.avatar)
+          .attr('x', -d.size / 2)
+          .attr('y', -d.size / 2)
+          .attr('width', d.size)
+          .attr('height', d.size)
+          .attr('clip-path', `url(#clip-${d.id})`)
+          .attr('preserveAspectRatio', 'xMidYMid slice');
+      } else {
+        scaleGroup.append('text')
+          .attr('class', 'node-initial')
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'central')
+          .attr('font-size', d.size * 0.4)
+          .text(d.firstName.charAt(0).toUpperCase());
+      }
+
+      // Border
+      scaleGroup.append('circle')
+        .attr('class', 'node-border')
+        .attr('r', d.size / 2);
+
+      // CIV badge
+      if (d.isCiv == 1 || d.isCiv === true) {
+        const badge = scaleGroup.append('g')
+          .attr('class', 'verified-badge')
+          .attr('transform', `translate(${d.size / 2 - d.size * 0.1}, ${-d.size / 2 + d.size * 0.1})`);
+
+        badge.append('circle')
+          .attr('r', d.size * 0.2)
+          .attr('fill', '#1d9bf0');
+
+        badge.append('text')
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'central')
+          .attr('fill', 'white')
+          .attr('font-size', d.size * 0.14)
+          .attr('font-weight', '700')
+          .text('CIV');
+      }
+    });
+
+    // Animate new nodes scaling in with smooth bounce and celebration burst (only for newly added nodes, not on page load)
+    nodeEnter.filter(d => d._isAnimatingIn).select('.node-scale-group')
+      .transition()
+      .duration(1000)
+      .ease(d3.easeElasticOut.amplitude(1).period(0.5))
+      .attr('transform', 'scale(1)')
+      .on('end', function() {
+        // Create celebration burst effect on the parent node group
+        const nodeG = d3.select(this.parentNode);
+        const d = nodeG.datum();
+
+        // Release fixed position so simulation can take over
+        d.fx = null;
+        d.fy = null;
+        d._isAnimatingIn = false;
+        // Gentle restart to let node find its place
+        if (simulationRef.current) {
+          simulationRef.current.alpha(0.2).restart();
+        }
+
+        const burstGroup = nodeG.append('g').attr('class', 'burst-effect');
+        const numLines = 12;
+        const lineLength = d.size * 0.5;
+        const startRadius = d.size / 2 + 2;
+
+        for (let i = 0; i < numLines; i++) {
+          const angle = (2 * Math.PI * i) / numLines;
+          const x1 = Math.cos(angle) * startRadius;
+          const y1 = Math.sin(angle) * startRadius;
+          const x2 = Math.cos(angle) * (startRadius + lineLength);
+          const y2 = Math.sin(angle) * (startRadius + lineLength);
+
+          burstGroup.append('line')
+            .attr('x1', x1)
+            .attr('y1', y1)
+            .attr('x2', x1)
+            .attr('y2', y1)
+            .attr('stroke', '#ff6b9d')
+            .attr('stroke-width', 2.5)
+            .attr('stroke-linecap', 'round')
+            .attr('opacity', 0.9)
+            .transition()
+            .duration(600)
+            .ease(d3.easeCubicOut)
+            .attr('x2', x2)
+            .attr('y2', y2)
+            .attr('opacity', 0.7)
+            .transition()
+            .duration(400)
+            .ease(d3.easeCubicIn)
+            .attr('opacity', 0)
+            .remove();
+        }
+
+        // Remove burst group after animation
+        setTimeout(() => burstGroup.remove(), 1200);
+      });
+
+    // Merge for updates
+    const node = nodeEnter.merge(nodeSelection);
 
     // Node interaction
     const highlightNode = (d, highlight) => {
@@ -478,7 +658,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     // Drag behavior
     const drag = d3.drag()
       .on('start', (event, d) => {
-        if (!event.active) simulation.alphaTarget(0.3).restart();
+        if (!event.active && simulationRef.current) simulationRef.current.alphaTarget(0.3).restart();
         d.fx = d.x;
         d.fy = d.y;
       })
@@ -487,45 +667,73 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         d.fy = event.y;
       })
       .on('end', (event, d) => {
-        if (!event.active) simulation.alphaTarget(0);
+        if (!event.active && simulationRef.current) simulationRef.current.alphaTarget(0);
         d.fx = null;
         d.fy = null;
       });
 
     node.call(drag);
 
-    // Force simulation with custom physics
+    // === SIMULATION ===
     const currentSettings = settingsRef.current;
-    const simulation = d3.forceSimulation(graphData.nodes)
-      // Links: strong attraction for connected nodes (shorter edges)
-      .force('link', d3.forceLink(graphData.links)
-        .id(d => d.id)
-        .distance(d => currentSettings.linkDistance + ((d.source.size || MIN_NODE_SIZE) + (d.target.size || MIN_NODE_SIZE)) / 4)
-        .strength(LINK_STRENGTH))
-      // Custom physics: 1/r² repulsion + 1/r attraction
-      .force('physics', forceCustomPhysics(currentSettings.repulsion, currentSettings.attraction))
-      // Gentle gravity to keep graph centered
-      .force('x', d3.forceX(width / 2).strength(CENTER_GRAVITY))
-      .force('y', d3.forceY(height / 2).strength(CENTER_GRAVITY))
-      // Collision: prevent overlap
-      .force('collision', d3.forceCollide()
-        .radius(d => d.size / 2 + COLLISION_PADDING)
-        .strength(1))
-      // Uncross: reduce edge crossings
-      .force('uncross', forceUncross(graphData.links))
-      .alphaDecay(0.01)
-      .velocityDecay(0.4);
 
-    simulationRef.current = simulation;
+    // Create or update simulation
+    let simulation = simulationRef.current;
+    if (!simulation) {
+      simulation = d3.forceSimulation(graphData.nodes)
+        .force('link', d3.forceLink(graphData.links)
+          .id(d => d.id)
+          .distance(d => currentSettings.linkDistance + ((d.source.size || MIN_NODE_SIZE) + (d.target.size || MIN_NODE_SIZE)) / 4)
+          .strength(LINK_STRENGTH))
+        .force('physics', forceCustomPhysics(currentSettings.repulsion, currentSettings.attraction))
+        .force('x', d3.forceX(width / 2).strength(CENTER_GRAVITY))
+        .force('y', d3.forceY(height / 2).strength(CENTER_GRAVITY))
+        .force('collision', d3.forceCollide()
+          .radius(d => d.size / 2 + COLLISION_PADDING)
+          .strength(1))
+        .force('uncross', forceUncross(graphData.links))
+        .alphaDecay(0.01)
+        .velocityDecay(0.4);
+
+      simulationRef.current = simulation;
+    } else {
+      // Update existing simulation with new nodes/links
+      simulation.nodes(graphData.nodes);
+      simulation.force('link').links(graphData.links);
+      simulation.force('uncross', forceUncross(graphData.links));
+      // Gentle restart - new nodes are fixed, so only minor adjustments
+      simulation.alpha(0.1).restart();
+    }
 
     // Update positions on tick
-    let hasFitted = false;
     simulation.on('tick', () => {
-      link
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y);
+      // Update link positions and animate new links
+      link.each(function(d) {
+        const line = d3.select(this);
+        const x1 = d.source.x;
+        const y1 = d.source.y;
+        const x2 = d.target.x;
+        const y2 = d.target.y;
+
+        line.attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2);
+
+        // Animate new links drawing in
+        if (this._animateIn && !animatedLinksRef.current.has(d.id)) {
+          animatedLinksRef.current.add(d.id);
+          const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+          line
+            .attr('stroke-dasharray', length)
+            .attr('stroke-dashoffset', length)
+            .transition()
+            .duration(1200)
+            .ease(d3.easeCubicInOut)
+            .attr('stroke-dashoffset', 0)
+            .on('end', () => {
+              line.attr('stroke-dasharray', null);
+              this._animateIn = false;
+            });
+        }
+      });
 
       linkHitArea
         .attr('x1', d => d.source.x)
@@ -533,30 +741,54 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         .attr('x2', d => d.target.x)
         .attr('y2', d => d.target.y);
 
+      // Update node positions (scale is handled separately by inner group)
       node.attr('transform', d => `translate(${d.x},${d.y})`);
 
-      // Fit once when settled
-      if (!hasFitted && simulation.alpha() < 0.1) {
-        hasFitted = true;
-        const transform = calculateFitTransform(graphData.nodes, width, height);
-        svg.call(zoom.transform, transform);
-      }
+      // Store positions for persistence
+      graphData.nodes.forEach(n => {
+        nodePositionsRef.current.set(n.id, {
+          x: n.x,
+          y: n.y,
+          vx: n.vx,
+          vy: n.vy
+        });
+      });
     });
+
+    // Update link IDs ref for tracking new links
+    linkIdsRef.current = new Set(graphData.links.map(l => l.id));
+
+    // Clean up stale node positions (for removed nodes)
+    const currentNodeIds = new Set(graphData.nodes.map(n => n.id));
+    for (const nodeId of nodePositionsRef.current.keys()) {
+      if (!currentNodeIds.has(nodeId)) {
+        nodePositionsRef.current.delete(nodeId);
+      }
+    }
+
+    // Clean up stale animated links
+    for (const linkId of animatedLinksRef.current) {
+      if (!linkIdsRef.current.has(linkId)) {
+        animatedLinksRef.current.delete(linkId);
+      }
+    }
 
     // Handle resize
     const handleResize = () => {
       const newWidth = window.innerWidth;
       const newHeight = window.innerHeight;
-      simulation.force('x', d3.forceX(newWidth / 2).strength(CENTER_GRAVITY));
-      simulation.force('y', d3.forceY(newHeight / 2).strength(CENTER_GRAVITY));
-      simulation.alpha(0.3).restart();
+      if (simulationRef.current) {
+        simulationRef.current.force('x', d3.forceX(newWidth / 2).strength(CENTER_GRAVITY));
+        simulationRef.current.force('y', d3.forceY(newHeight / 2).strength(CENTER_GRAVITY));
+        simulationRef.current.alpha(0.3).restart();
+      }
     };
 
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      simulation.stop();
+      // Note: Don't stop simulation here as it's reused across renders
     };
   }, [graphData, currentUserId, onShowTooltip, onHideTooltip]);
 
