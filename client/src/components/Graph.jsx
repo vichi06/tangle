@@ -567,7 +567,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       }
     });
 
-    // Animate new nodes scaling in with smooth bounce and celebration burst (only for newly added nodes, not on page load)
+    // Animate new nodes scaling in with smooth bounce and hearts effect (only for newly added nodes, not on page load)
     nodeEnter.filter(d => d._isAnimatingIn).select('.node-scale-group')
       .transition()
       .duration(1000)
@@ -587,46 +587,97 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
           simulationRef.current.alpha(0.2).restart();
         }
 
-        const burstGroup = nodeG.append('g').attr('class', 'burst-effect');
-        const numLines = 12;
-        const lineLength = d.size * 0.5;
-        const startRadius = d.size / 2 + 2;
+        const heartsGroup = nodeG.append('g').attr('class', 'hearts-effect');
+        const numHearts = 6;
+        const startRadius = d.size / 2 + 5;
+        const heartPath = 'M0,-3 C-1.5,-5 -5,-5 -5,-2 C-5,1 0,5 0,5 C0,5 5,1 5,-2 C5,-5 1.5,-5 0,-3 Z';
 
-        for (let i = 0; i < numLines; i++) {
-          const angle = (2 * Math.PI * i) / numLines;
-          const x1 = Math.cos(angle) * startRadius;
-          const y1 = Math.sin(angle) * startRadius;
-          const x2 = Math.cos(angle) * (startRadius + lineLength);
-          const y2 = Math.sin(angle) * (startRadius + lineLength);
+        for (let i = 0; i < numHearts; i++) {
+          const angle = (2 * Math.PI * i) / numHearts - Math.PI / 2;
+          const startX = Math.cos(angle) * startRadius;
+          const startY = Math.sin(angle) * startRadius;
+          const endX = Math.cos(angle) * (startRadius + d.size * 0.6);
+          const endY = Math.sin(angle) * (startRadius + d.size * 0.6) - 10;
+          const delay = i * 50;
 
-          burstGroup.append('line')
-            .attr('x1', x1)
-            .attr('y1', y1)
-            .attr('x2', x1)
-            .attr('y2', y1)
-            .attr('stroke', '#ff6b9d')
-            .attr('stroke-width', 2.5)
-            .attr('stroke-linecap', 'round')
-            .attr('opacity', 0.9)
+          heartsGroup.append('path')
+            .attr('d', heartPath)
+            .attr('transform', `translate(${startX},${startY}) scale(0)`)
+            .attr('fill', '#ff6b9d')
+            .attr('opacity', 0)
+            .transition()
+            .delay(delay)
+            .duration(400)
+            .ease(d3.easeBackOut.overshoot(2))
+            .attr('transform', `translate(${startX},${startY}) scale(1.2)`)
+            .attr('opacity', 1)
             .transition()
             .duration(600)
             .ease(d3.easeCubicOut)
-            .attr('x2', x2)
-            .attr('y2', y2)
-            .attr('opacity', 0.7)
-            .transition()
-            .duration(400)
-            .ease(d3.easeCubicIn)
+            .attr('transform', `translate(${endX},${endY}) scale(0.8)`)
             .attr('opacity', 0)
             .remove();
         }
 
-        // Remove burst group after animation
-        setTimeout(() => burstGroup.remove(), 1200);
+        // Remove hearts group after animation
+        setTimeout(() => heartsGroup.remove(), 1200);
       });
 
     // Merge for updates
     const node = nodeEnter.merge(nodeSelection);
+
+    // UPDATE: Animate size changes for existing nodes
+    nodeSelection.each(function(d) {
+      const nodeG = d3.select(this);
+      const scaleGroup = nodeG.select('.node-scale-group');
+
+      // Animate circle sizes
+      scaleGroup.select('clipPath circle')
+        .transition()
+        .duration(500)
+        .attr('r', d.size / 2);
+
+      scaleGroup.select('circle.node-bg')
+        .transition()
+        .duration(500)
+        .attr('r', d.size / 2);
+
+      scaleGroup.select('circle.node-border')
+        .transition()
+        .duration(500)
+        .attr('r', d.size / 2);
+
+      // Animate image size/position
+      scaleGroup.select('image')
+        .transition()
+        .duration(500)
+        .attr('x', -d.size / 2)
+        .attr('y', -d.size / 2)
+        .attr('width', d.size)
+        .attr('height', d.size);
+
+      // Animate text size
+      scaleGroup.select('text.node-initial')
+        .transition()
+        .duration(500)
+        .attr('font-size', d.size * 0.4);
+
+      // Animate badge position
+      scaleGroup.select('.verified-badge')
+        .transition()
+        .duration(500)
+        .attr('transform', `translate(${d.size / 2 - d.size * 0.1}, ${-d.size / 2 + d.size * 0.1})`);
+
+      scaleGroup.select('.verified-badge circle')
+        .transition()
+        .duration(500)
+        .attr('r', d.size * 0.2);
+
+      scaleGroup.select('.verified-badge text')
+        .transition()
+        .duration(500)
+        .attr('font-size', d.size * 0.14);
+    });
 
     // Node interaction
     const highlightNode = (d, highlight) => {
