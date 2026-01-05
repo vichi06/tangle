@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.join(__dirname, 'db', 'kissgraph.db');
+const dbPath = path.join(__dirname, 'db', 'tangle.db');
 const schemaPath = path.join(__dirname, 'db', 'schema.sql');
 
 // Ensure db directory exists
