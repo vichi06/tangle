@@ -1,0 +1,164 @@
+.tooltip {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  pointer-events: none;
+  max-width: 250px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.tooltip-node {
+  display: flex;
+  gap: 12px;
+}
+
+.tooltip-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.tooltip-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.tooltip-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.tooltip-bio {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.tooltip-connections {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.tooltip-link {
+  text-align: center;
+}
+
+.tooltip-link-people {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.tooltip-heart {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tooltip-intensity {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.tooltip-date {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.tooltip-context {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Mobile modal */
+.tooltip-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px;
+}
+
+.tooltip-bottom-sheet {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px;
+  width: 100%;
+  max-width: 400px;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tooltip-handle {
+  display: none;
+}
+
+.tooltip-bottom-sheet .tooltip-node {
+  gap: 16px;
+}
+
+.tooltip-bottom-sheet .tooltip-avatar {
+  width: 70px;
+  height: 70px;
+}
+
+.tooltip-bottom-sheet .tooltip-name {
+  font-size: 18px;
+}
+
+.tooltip-bottom-sheet .tooltip-bio {
+  font-size: 14px;
+  -webkit-line-clamp: 3;
+}
+
+.tooltip-bottom-sheet .tooltip-connections {
+  font-size: 13px;
+}
+
+.tooltip-bottom-sheet .tooltip-link-people {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.tooltip-bottom-sheet .tooltip-intensity {
+  font-size: 15px;
+}
+
+.tooltip-bottom-sheet .tooltip-date,
+.tooltip-bottom-sheet .tooltip-context {
+  font-size: 14px;
+}

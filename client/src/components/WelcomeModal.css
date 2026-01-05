@@ -1,0 +1,262 @@
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.welcome-modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 40px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  text-align: center;
+}
+
+.welcome-modal h1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.welcome-subtitle {
+  color: var(--text-secondary);
+  font-size: 16px;
+  margin-bottom: 32px;
+}
+
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 4px;
+}
+
+.person-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.person-card:hover {
+  border-color: var(--text-secondary);
+  transform: translateY(-2px);
+}
+
+.person-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.person-avatar-placeholder {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.person-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  text-align: center;
+  word-break: break-word;
+}
+
+.no-people {
+  color: var(--text-muted);
+  padding: 40px;
+}
+
+.switch-mode-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.switch-mode-btn:hover {
+  color: var(--text-primary);
+  background: none;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-row input {
+  flex: 1;
+}
+
+.create-form input,
+.create-form textarea {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+}
+
+.create-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.avatar-upload {
+  display: flex;
+  justify-content: center;
+}
+
+.avatar-upload label {
+  cursor: pointer;
+}
+
+.avatar-preview {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border-color);
+}
+
+.avatar-placeholder {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 2px dashed var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.avatar-placeholder:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+}
+
+.error-message {
+  color: #e57373;
+  font-size: 13px;
+  text-align: center;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.back-btn {
+  flex: 1;
+  background: var(--bg-tertiary);
+}
+
+.create-btn {
+  flex: 2;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  font-weight: 500;
+}
+
+.create-btn:hover {
+  background: var(--text-secondary);
+}
+
+.create-btn:disabled {
+  background: var(--border-color);
+  color: var(--text-muted);
+}
+
+/* CIV Toggle - Mobile friendly */
+.create-form .civ-toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  margin: 4px 0;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.create-form .civ-toggle-label {
+  font-size: 15px;
+  color: var(--text-primary);
+  font-weight: 500;
+  pointer-events: none;
+}
+
+.create-form .civ-toggle-track {
+  position: relative;
+  display: block;
+  width: 56px;
+  height: 32px;
+  background: var(--bg-primary);
+  border-radius: 16px;
+  border: 2px solid var(--border-color);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.create-form .civ-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.create-form .civ-toggle-container.active .civ-toggle-track {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.create-form .civ-toggle-container.active .civ-toggle-thumb {
+  left: 27px;
+  background: #fff;
+}
