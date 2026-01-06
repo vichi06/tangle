@@ -13,6 +13,13 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
   const digitRefs = [useRef(), useRef(), useRef(), useRef()];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredPeople = people.filter(person => {
+    if (!searchQuery.trim()) return true;
+    const fullName = `${person.first_name} ${person.last_name}`.toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase());
+  });
 
   const handleSelectPerson = (person) => {
     setPendingSelection(person);
@@ -33,9 +40,11 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
     newDigits[index] = value.slice(-1);
     setCodeDigits(newDigits);
 
-    // Auto-focus next input
+    // Auto-focus next input or auto-submit
     if (value && index < 3) {
       digitRefs[index + 1].current?.focus();
+    } else if (value && index === 3 && newDigits.every(d => d)) {
+      verifyCode(newDigits.join(''));
     }
   };
 
@@ -46,8 +55,7 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
     }
   };
 
-  const handleVerifyCode = async () => {
-    const code = codeDigits.join('');
+  const verifyCode = async (code) => {
     if (code.length !== 4) {
       setError('Please enter a 4-digit code');
       return;
@@ -69,6 +77,10 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
     } finally {
       setVerifying(false);
     }
+  };
+
+  const handleVerifyCode = () => {
+    verifyCode(codeDigits.join(''));
   };
 
   const confirmSelection = () => {
@@ -120,9 +132,20 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
 
         {mode === 'select' ? (
           <>
-            {people.length > 0 ? (
+            {people.length > 0 && (
+              <div className="search-bar">
+                <input
+                  type="text"
+                  placeholder="Search by name..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+            )}
+            {filteredPeople.length > 0 ? (
               <div className="people-grid">
-                {people.map(person => (
+                {filteredPeople.map(person => (
                   <button
                     key={person.id}
                     className="person-card"
@@ -141,6 +164,8 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
                   </button>
                 ))}
               </div>
+            ) : people.length > 0 ? (
+              <p className="no-people">No results found</p>
             ) : (
               <p className="no-people">No one here yet. Be the first!</p>
             )}
