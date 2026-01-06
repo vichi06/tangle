@@ -33,6 +33,29 @@
   margin-bottom: 32px;
 }
 
+.search-bar {
+  margin-bottom: 20px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--text-secondary);
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
 .people-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
