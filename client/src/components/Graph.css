@@ -153,17 +153,61 @@
   color: var(--text-primary);
 }
 
-.link {
-  stroke: var(--edge-color);
-  transition: stroke 0.2s ease, stroke-width 0.2s ease;
+/* Toggle setting row */
+.settings-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.settings-toggle .settings-label {
+  margin-bottom: 0;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  padding: 0;
   cursor: pointer;
 }
 
-.link.intensity-kiss { stroke: #f472b6; }
-.link.intensity-cuddle { stroke: #a78bfa; }
-.link.intensity-couple { stroke: #f43f5e; }
+.toggle-track {
+  display: block;
+  width: 36px;
+  height: 20px;
+  background: var(--border-color);
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.toggle-btn.active .toggle-track {
+  background: #1d9bf0;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.toggle-btn.active .toggle-thumb {
+  transform: translateX(16px);
+}
+
+.link {
+  stroke: var(--edge-color);
+  transition: stroke 0.2s ease, stroke-width 0.2s ease, opacity 0.2s ease;
+  cursor: pointer;
+}
+
 .link.intensity-hidden {
-  stroke: #6b7280;
   stroke-dasharray: 4 4;
 }
 
@@ -179,6 +223,15 @@
 
 .node {
   cursor: pointer;
+}
+
+.node-backing {
+  fill: #0a0a0a;
+  opacity: 1 !important;
+}
+
+.node-scale-group {
+  transition: opacity 0.2s ease;
 }
 
 .node-bg {
@@ -214,10 +267,63 @@
 }
 
 .node image {
-  filter: grayscale(100%);
   transition: filter 0.2s ease;
 }
 
-.node.highlighted image {
-  filter: grayscale(0%);
+/* Distance-based gradient styling when a node is hovered */
+.node[data-distance="1"] .node-scale-group {
+  opacity: 0.9;
+}
+.node[data-distance="1"] image {
+  filter: grayscale(20%);
+}
+
+.node[data-distance="2"] .node-scale-group {
+  opacity: 0.75;
+}
+.node[data-distance="2"] image {
+  filter: grayscale(40%);
+}
+
+.node[data-distance="3"] .node-scale-group {
+  opacity: 0.6;
+}
+.node[data-distance="3"] image {
+  filter: grayscale(60%);
+}
+
+.node[data-distance="4"] .node-scale-group {
+  opacity: 0.45;
+}
+.node[data-distance="4"] image {
+  filter: grayscale(80%);
+}
+
+.node[data-distance="5"] .node-scale-group {
+  opacity: 0.35;
+}
+.node[data-distance="5"] image {
+  filter: grayscale(100%);
+}
+
+.node[data-distance="disconnected"] .node-scale-group {
+  opacity: 0.2;
+}
+.node[data-distance="disconnected"] image {
+  filter: grayscale(100%);
+}
+
+/* Links fade with distance */
+.link[data-distance="1"] {
+  opacity: 0.6;
+}
+.link[data-distance="2"] {
+  opacity: 0.4;
+}
+.link[data-distance="3"] {
+  opacity: 0.25;
+}
+.link[data-distance="4"],
+.link[data-distance="5"] {
+  opacity: 0.15;
 }

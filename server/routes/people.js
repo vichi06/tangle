@@ -3,20 +3,26 @@ import db from '../database.js';
 
 const router = express.Router();
 
-// Get all people
+// Get all people (exclude admin_code for security)
 router.get('/', (req, res) => {
   try {
-    const people = db.prepare('SELECT * FROM people ORDER BY last_name, first_name').all();
+    const people = db.prepare(`
+      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, created_at
+      FROM people ORDER BY last_name, first_name
+    `).all();
     res.json(people);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get single person
+// Get single person (exclude admin_code for security)
 router.get('/:id', (req, res) => {
   try {
-    const person = db.prepare('SELECT * FROM people WHERE id = ?').get(req.params.id);
+    const person = db.prepare(`
+      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, created_at
+      FROM people WHERE id = ?
+    `).get(req.params.id);
     if (!person) {
       return res.status(404).json({ error: 'Person not found' });
     }
@@ -35,14 +41,17 @@ router.post('/', (req, res) => {
   try {
     const stmt = db.prepare('INSERT INTO people (first_name, last_name, avatar, bio, is_civ) VALUES (?, ?, ?, ?, ?)');
     const result = stmt.run(first_name, last_name, avatar || null, bio || null, is_civ ? 1 : 0);
-    const person = db.prepare('SELECT * FROM people WHERE id = ?').get(result.lastInsertRowid);
+    const person = db.prepare(`
+      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, created_at
+      FROM people WHERE id = ?
+    `).get(result.lastInsertRowid);
     res.status(201).json(person);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Update person
+// Update person (admin fields are set directly in DB)
 router.put('/:id', (req, res) => {
   const { first_name, last_name, avatar, bio, is_civ } = req.body;
   try {
@@ -59,8 +68,32 @@ router.put('/:id', (req, res) => {
       is_civ !== undefined ? (is_civ ? 1 : 0) : existing.is_civ,
       req.params.id
     );
-    const person = db.prepare('SELECT * FROM people WHERE id = ?').get(req.params.id);
+    const person = db.prepare(`
+      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, created_at
+      FROM people WHERE id = ?
+    `).get(req.params.id);
     res.json(person);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Verify admin code
+router.post('/:id/verify-code', (req, res) => {
+  const { code } = req.body;
+  if (!code) {
+    return res.status(400).json({ error: 'Code is required' });
+  }
+  try {
+    const person = db.prepare('SELECT admin_code FROM people WHERE id = ? AND is_admin = 1').get(req.params.id);
+    if (!person) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+    if (person.admin_code === code) {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ error: 'Invalid code' });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

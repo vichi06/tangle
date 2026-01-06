@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import AvatarUpload from './AvatarUpload';
-import { useLanguage } from '../i18n/LanguageContext';
 import './ProfileEdit.css';
 
 const API_BASE = '/api';
@@ -15,11 +14,10 @@ function ProfileEdit({ user, onUpdate, onClose }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { t } = useLanguage();
 
   const handleSave = async () => {
     if (!profile.first_name.trim() || !profile.last_name.trim()) {
-      setError(t('firstLastRequired'));
+      setError('First and last name are required');
       return;
     }
 
@@ -33,7 +31,7 @@ function ProfileEdit({ user, onUpdate, onClose }) {
         body: JSON.stringify(profile)
       });
 
-      if (!res.ok) throw new Error(t('failedUpdate'));
+      if (!res.ok) throw new Error('Failed to update profile');
 
       const updated = await res.json();
       onUpdate(updated);
@@ -48,7 +46,7 @@ function ProfileEdit({ user, onUpdate, onClose }) {
   return (
     <div className="profile-edit-overlay" onClick={onClose}>
       <div className="profile-edit-modal" onClick={e => e.stopPropagation()}>
-        <h2>{t('editProfile')}</h2>
+        <h2>Edit Profile</h2>
 
         <div className="profile-avatar">
           <AvatarUpload
@@ -62,20 +60,20 @@ function ProfileEdit({ user, onUpdate, onClose }) {
           <div className="name-row">
             <input
               type="text"
-              placeholder={t('firstName')}
+              placeholder="First name"
               value={profile.first_name}
               onChange={e => setProfile(p => ({ ...p, first_name: e.target.value }))}
             />
             <input
               type="text"
-              placeholder={t('lastName')}
+              placeholder="Last name"
               value={profile.last_name}
               onChange={e => setProfile(p => ({ ...p, last_name: e.target.value }))}
             />
           </div>
 
           <textarea
-            placeholder={t('bioOptional')}
+            placeholder="Bio (optional)"
             value={profile.bio}
             onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))}
           />
@@ -85,7 +83,7 @@ function ProfileEdit({ user, onUpdate, onClose }) {
             className={`civ-toggle-container ${profile.is_civ ? 'active' : ''}`}
             onClick={() => setProfile(p => ({ ...p, is_civ: !p.is_civ }))}
           >
-            <span className="civ-toggle-label">{t('partOfCiv')}</span>
+            <span className="civ-toggle-label">Part of CIV</span>
             <span className="civ-toggle-track">
               <span className="civ-toggle-thumb" />
             </span>
@@ -96,10 +94,10 @@ function ProfileEdit({ user, onUpdate, onClose }) {
 
         <div className="profile-actions">
           <button className="cancel-btn" onClick={onClose}>
-            {t('cancel')}
+            Cancel
           </button>
           <button className="save-btn" onClick={handleSave} disabled={loading}>
-            {loading ? t('saving') : t('save')}
+            {loading ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>

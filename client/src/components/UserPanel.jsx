@@ -1,13 +1,27 @@
 import { useState, useMemo } from 'react';
 import AvatarUpload from './AvatarUpload';
 import ConfirmModal from './ConfirmModal';
-import { useLanguage } from '../i18n/LanguageContext';
 import './UserPanel.css';
 
 const API_BASE = '/api';
 
+const INTENSITY_OPTIONS = [
+  { value: 'kiss', label: 'Kiss' },
+  { value: 'cuddle', label: 'Cuddle in bed' },
+  { value: 'couple', label: 'Couple' },
+  { value: 'hidden', label: 'Hidden' }
+];
+
+const INTENSITY_LABELS = {
+  kiss: 'Kiss',
+  cuddle: 'Cuddle in bed',
+  couple: 'Couple',
+  hidden: 'Hidden'
+};
+
 function UserPanel({ currentUser, people, relationships, onDataChange, onClose }) {
   const [mode, setMode] = useState('list'); // 'list', 'add', 'create', 'edit'
+  const [managedUserId, setManagedUserId] = useState(currentUser.id);
   const [selectedPersonId, setSelectedPersonId] = useState('');
   const [newRelation, setNewRelation] = useState({ intensity: 'kiss', date: '', context: '' });
   const [newPerson, setNewPerson] = useState({ first_name: '', last_name: '', bio: '', avatar: '', is_civ: false });
@@ -15,21 +29,18 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const { t } = useLanguage();
 
-  const INTENSITY_OPTIONS = [
-    { value: 'kiss', label: t('kiss') },
-    { value: 'cuddle', label: t('cuddle') },
-    { value: 'couple', label: t('couple') },
-    { value: 'hidden', label: t('hidden') }
-  ];
+  // The user whose relationships we're managing (admin can change this)
+  const managedUser = useMemo(() => {
+    return people.find(p => p.id === managedUserId) || currentUser;
+  }, [people, managedUserId, currentUser]);
 
-  // Get current user's relationships
+  // Get managed user's relationships
   const myRelationships = useMemo(() => {
     return relationships.filter(
-      rel => rel.person1_id === currentUser.id || rel.person2_id === currentUser.id
+      rel => rel.person1_id === managedUser.id || rel.person2_id === managedUser.id
     ).map(rel => {
-      const isFirst = rel.person1_id === currentUser.id;
+      const isFirst = rel.person1_id === managedUser.id;
       return {
         ...rel,
         partnerId: isFirst ? rel.person2_id : rel.person1_id,
@@ -38,14 +49,14 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
         partnerAvatar: isFirst ? rel.person2_avatar : rel.person1_avatar
       };
     });
-  }, [relationships, currentUser.id]);
+  }, [relationships, managedUser.id]);
 
-  // People not yet connected to current user
+  // People not yet connected to managed user
   const availablePeople = useMemo(() => {
     const connectedIds = new Set(myRelationships.map(r => r.partnerId));
-    connectedIds.add(currentUser.id);
+    connectedIds.add(managedUser.id);
     return people.filter(p => !connectedIds.has(p.id));
-  }, [people, myRelationships, currentUser.id]);
+  }, [people, myRelationships, managedUser.id]);
 
   const showMessage = (text, isError = false) => {
     setMessage({ text, isError });
@@ -60,7 +71,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          person1_id: currentUser.id,
+          person1_id: managedUser.id,
           person2_id: personId,
           intensity: newRelation.intensity,
           date: newRelation.date || null,
@@ -108,7 +119,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          person1_id: currentUser.id,
+          person1_id: managedUser.id,
           person2_id: createdPerson.id,
           intensity: newRelation.intensity,
           date: newRelation.date || null,
@@ -199,12 +210,32 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
     </div>
   );
 
+  const isManagingOther = managedUser.id !== currentUser.id;
+
   return (
     <div className="user-panel">
       <div className="panel-header">
-        <h2>{t('yourRelations')}</h2>
+        <h2>{isManagingOther ? `${managedUser.first_name}'s relations` : 'Your relations'}</h2>
         <button className="close-btn" onClick={onClose}>x</button>
       </div>
+
+      {currentUser.is_admin && (
+        <div className="admin-user-select">
+          <select
+            value={managedUserId}
+            onChange={e => {
+              setManagedUserId(parseInt(e.target.value));
+              setMode('list');
+            }}
+          >
+            {people.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.first_name} {p.last_name} {p.id === currentUser.id ? '(You)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {message && (
         <div className={`panel-message ${message.isError ? 'error' : 'success'}`}>
@@ -217,7 +248,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
           <>
             <div className="my-connections">
               {myRelationships.length === 0 ? (
-                <p className="no-connections">{t('noRelationsYet')}</p>
+                <p className="no-connections">No relations yet</p>
               ) : (
                 myRelationships.map(rel => (
                   <div key={rel.id} className="connection-item">
@@ -233,7 +264,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
                         <strong>{rel.partnerFirstName} {rel.partnerLastName}</strong>
                         <p className="connection-intensity">
                           <span className={`intensity-dot intensity-${rel.intensity || 'kiss'}`} />
-                          {t(rel.intensity) || t('kiss')}
+                          {INTENSITY_LABELS[rel.intensity] || 'Kiss'}
                         </p>
                         {(rel.date || rel.context) && (
                           <p className="connection-meta">
@@ -248,14 +279,14 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
                         onClick={() => startEditRelation(rel)}
                         disabled={loading}
                       >
-                        {t('edit')}
+                        Edit
                       </button>
                       <button
                         className="remove-btn"
                         onClick={() => setConfirmDelete(rel.id)}
                         disabled={loading}
                       >
-                        {t('delete')}
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -267,14 +298,14 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
               className="add-connection-btn"
               onClick={() => setMode('add')}
             >
-              + {t('addRelation')}
+              + Add a relation
             </button>
           </>
         )}
 
         {mode === 'add' && (
           <div className="add-connection">
-            <h3>{t('addRelation')}</h3>
+            <h3>Add a relation</h3>
 
             {availablePeople.length > 0 && (
               <div className="person-select">
@@ -282,7 +313,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
                   value={selectedPersonId}
                   onChange={e => setSelectedPersonId(e.target.value)}
                 >
-                  <option value="">{t('selectPerson')}</option>
+                  <option value="">Select a person</option>
                   {availablePeople.map(p => (
                     <option key={p.id} value={p.id}>
                       {p.first_name} {p.last_name}
@@ -296,12 +327,12 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
               className="create-new-btn"
               onClick={() => setMode('create')}
             >
-              {t('addNewPerson')}
+              + Add new person
             </button>
 
             {selectedPersonId && (
               <div className="relation-details">
-                <label className="detail-label">{t('howFar')}</label>
+                <label className="detail-label">How far?</label>
                 <IntensityRadios
                   value={newRelation.intensity}
                   onChange={v => setNewRelation(r => ({ ...r, intensity: v }))}
@@ -309,13 +340,13 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
 
                 <input
                   type="text"
-                  placeholder={t('whenPlaceholder')}
+                  placeholder="When? (e.g., Summer 2023)"
                   value={newRelation.date}
                   onChange={e => setNewRelation(r => ({ ...r, date: e.target.value }))}
                 />
                 <input
                   type="text"
-                  placeholder={t('wherePlaceholder')}
+                  placeholder="Where/Context?"
                   value={newRelation.context}
                   onChange={e => setNewRelation(r => ({ ...r, context: e.target.value }))}
                 />
@@ -324,20 +355,20 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
                   onClick={() => addRelationship(parseInt(selectedPersonId))}
                   disabled={loading}
                 >
-                  {loading ? t('adding') : t('add')}
+                  {loading ? 'Adding...' : 'Add'}
                 </button>
               </div>
             )}
 
             <button className="back-btn" onClick={() => setMode('list')}>
-              {t('back')}
+              Back
             </button>
           </div>
         )}
 
         {mode === 'create' && (
           <div className="create-person">
-            <h3>{t('addNewPerson')}</h3>
+            <h3>+ Add new person</h3>
 
             <div className="avatar-upload">
               <AvatarUpload
@@ -350,20 +381,20 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
             <div className="name-row">
               <input
                 type="text"
-                placeholder={t('firstName')}
+                placeholder="First name"
                 value={newPerson.first_name}
                 onChange={e => setNewPerson(p => ({ ...p, first_name: e.target.value }))}
               />
               <input
                 type="text"
-                placeholder={t('lastName')}
+                placeholder="Last name"
                 value={newPerson.last_name}
                 onChange={e => setNewPerson(p => ({ ...p, last_name: e.target.value }))}
               />
             </div>
 
             <textarea
-              placeholder={t('bioOptional')}
+              placeholder="Bio (optional)"
               value={newPerson.bio}
               onChange={e => setNewPerson(p => ({ ...p, bio: e.target.value }))}
             />
@@ -373,14 +404,14 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
               className={`civ-toggle-container ${newPerson.is_civ ? 'active' : ''}`}
               onClick={() => setNewPerson(p => ({ ...p, is_civ: !p.is_civ }))}
             >
-              <span className="civ-toggle-label">{t('partOfCiv')}</span>
+              <span className="civ-toggle-label">Part of CIV</span>
               <span className="civ-toggle-track">
                 <span className="civ-toggle-thumb" />
               </span>
             </button>
 
             <div className="relation-details">
-              <label className="detail-label">{t('howFar')}</label>
+              <label className="detail-label">How far?</label>
               <IntensityRadios
                 value={newRelation.intensity}
                 onChange={v => setNewRelation(r => ({ ...r, intensity: v }))}
@@ -388,13 +419,13 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
 
               <input
                 type="text"
-                placeholder={t('whenPlaceholder')}
+                placeholder="When? (e.g., Summer 2023)"
                 value={newRelation.date}
                 onChange={e => setNewRelation(r => ({ ...r, date: e.target.value }))}
               />
               <input
                 type="text"
-                placeholder={t('wherePlaceholder')}
+                placeholder="Where/Context?"
                 value={newRelation.context}
                 onChange={e => setNewRelation(r => ({ ...r, context: e.target.value }))}
               />
@@ -405,24 +436,24 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
               onClick={createPersonAndRelationship}
               disabled={loading}
             >
-              {loading ? t('adding') : t('add')}
+              {loading ? 'Adding...' : 'Add'}
             </button>
 
             <button className="back-btn" onClick={() => setMode('add')}>
-              {t('back')}
+              Back
             </button>
           </div>
         )}
 
         {mode === 'edit' && editingRelation && (
           <div className="edit-relation">
-            <h3>{t('editRelation')}</h3>
+            <h3>Edit relation</h3>
             <p className="edit-partner">
-              {t('with')} <strong>{editingRelation.partnerFirstName} {editingRelation.partnerLastName}</strong>
+              with <strong>{editingRelation.partnerFirstName} {editingRelation.partnerLastName}</strong>
             </p>
 
             <div className="relation-details">
-              <label className="detail-label">{t('howFar')}</label>
+              <label className="detail-label">How far?</label>
               <IntensityRadios
                 value={editingRelation.intensity}
                 onChange={v => setEditingRelation(r => ({ ...r, intensity: v }))}
@@ -430,13 +461,13 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
 
               <input
                 type="text"
-                placeholder={t('whenPlaceholder')}
+                placeholder="When? (e.g., Summer 2023)"
                 value={editingRelation.date}
                 onChange={e => setEditingRelation(r => ({ ...r, date: e.target.value }))}
               />
               <input
                 type="text"
-                placeholder={t('wherePlaceholder')}
+                placeholder="Where/Context?"
                 value={editingRelation.context}
                 onChange={e => setEditingRelation(r => ({ ...r, context: e.target.value }))}
               />
@@ -447,11 +478,11 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
               onClick={updateRelationship}
               disabled={loading}
             >
-              {loading ? t('updating') : t('update')}
+              {loading ? 'Updating...' : 'Update'}
             </button>
 
             <button className="back-btn" onClick={() => { setEditingRelation(null); setMode('list'); }}>
-              {t('cancel')}
+              Cancel
             </button>
           </div>
         )}
@@ -459,7 +490,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
 
       {confirmDelete && (
         <ConfirmModal
-          message={t('confirmDeleteRelation')}
+          message="Delete this relation?"
           onConfirm={() => deleteRelationship(confirmDelete)}
           onCancel={() => setConfirmDelete(null)}
         />

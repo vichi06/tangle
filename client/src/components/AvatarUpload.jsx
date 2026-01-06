@@ -1,9 +1,7 @@
 import { useState, useRef } from 'react';
-import { useLanguage } from '../i18n/LanguageContext';
 import './AvatarUpload.css';
 
 function AvatarUpload({ value, onChange, size = 80 }) {
-  const { t } = useLanguage();
   const [showOptions, setShowOptions] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -167,10 +165,10 @@ function AvatarUpload({ value, onChange, size = 80 }) {
           />
           <div className="camera-actions">
             <button className="capture-btn" onClick={capturePhoto}>
-              {t('takePhoto')}
+              Take Photo
             </button>
             <button className="cancel-btn" onClick={stopCamera}>
-              {t('cancel')}
+              Cancel
             </button>
           </div>
         </div>
@@ -194,7 +192,7 @@ function AvatarUpload({ value, onChange, size = 80 }) {
         ) : (
           <div className="avatar-empty">
             <span>+</span>
-            <span>{t('photo')}</span>
+            <span>Photo</span>
           </div>
         )}
       </div>
@@ -202,14 +200,14 @@ function AvatarUpload({ value, onChange, size = 80 }) {
       {showOptions && (
         <div className="avatar-options">
           <button onClick={() => fileInputRef.current?.click()}>
-            {t('chooseFile')}
+            Choose File
           </button>
           <button onClick={startCamera}>
-            {t('useCamera')}
+            Use Camera
           </button>
           {value && (
             <button className="remove-option" onClick={() => { onChange(''); setShowOptions(false); }}>
-              {t('remove')}
+              Remove
             </button>
           )}
         </div>
