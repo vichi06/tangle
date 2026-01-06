@@ -1,0 +1,103 @@
+import db from '../../lib/db.js';
+
+const COOLDOWN_MINUTES = 30;
+const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
+
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  try {
+    if (req.method === 'GET') {
+      const result = await db.execute(`
+        SELECT
+          i.*,
+          p.first_name as sender_first_name,
+          p.last_name as sender_last_name,
+          p.avatar as sender_avatar
+        FROM ideas i
+        JOIN people p ON i.sender_id = p.id
+        ORDER BY i.created_at ASC
+      `);
+      return res.json(result.rows);
+    }
+
+    if (req.method === 'POST') {
+      const { sender_id, content } = req.body;
+
+      if (!sender_id) {
+        return res.status(400).json({ error: 'Sender ID is required' });
+      }
+
+      if (!content || !content.trim()) {
+        return res.status(400).json({ error: 'Content is required' });
+      }
+
+      if (content.length > 500) {
+        return res.status(400).json({ error: 'Message too long (max 500 characters)' });
+      }
+
+      // Verify sender exists
+      const sender = await db.execute({
+        sql: 'SELECT id FROM people WHERE id = ?',
+        args: [sender_id]
+      });
+      if (sender.rows.length === 0) {
+        return res.status(400).json({ error: 'Sender not found' });
+      }
+
+      // Check cooldown
+      const lastIdea = await db.execute({
+        sql: 'SELECT created_at FROM ideas WHERE sender_id = ? ORDER BY created_at DESC LIMIT 1',
+        args: [sender_id]
+      });
+
+      if (lastIdea.rows.length > 0) {
+        const lastTime = new Date(lastIdea.rows[0].created_at + 'Z').getTime();
+        const now = Date.now();
+        const elapsed = now - lastTime;
+
+        if (elapsed < COOLDOWN_MS) {
+          const remaining = Math.ceil((COOLDOWN_MS - elapsed) / 60000);
+          return res.status(429).json({
+            error: `Please wait ${remaining} minutes before sending another idea`,
+            remainingMs: COOLDOWN_MS - elapsed
+          });
+        }
+      }
+
+      // Insert new idea
+      const insert = await db.execute({
+        sql: 'INSERT INTO ideas (sender_id, content) VALUES (?, ?)',
+        args: [sender_id, content.trim()]
+      });
+
+      // Return with sender info
+      const idea = await db.execute({
+        sql: `
+          SELECT
+            i.*,
+            p.first_name as sender_first_name,
+            p.last_name as sender_last_name,
+            p.avatar as sender_avatar
+          FROM ideas i
+          JOIN people p ON i.sender_id = p.id
+          WHERE i.id = ?
+        `,
+        args: [insert.lastInsertRowid]
+      });
+
+      return res.status(201).json(idea.rows[0]);
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+}
