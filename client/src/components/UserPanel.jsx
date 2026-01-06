@@ -219,7 +219,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
         <button className="close-btn" onClick={onClose}>x</button>
       </div>
 
-      {currentUser.is_admin && (
+      {!!currentUser.is_admin && (
         <div className="admin-user-select">
           <select
             value={managedUserId}
