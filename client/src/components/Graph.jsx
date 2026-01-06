@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS = {
   linkDistance: 30,     // Target distance for connected nodes
   attraction: 10,       // 1/r attraction strength (clustering)
   showCivBadge: true,   // Show CIV badge on nodes
+  nodeSizeMode: 'both', // 'connections', 'betweenness', or 'both'
 };
 
 // Slider ranges for percentage calculation
@@ -352,7 +353,19 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       const normalizedDegree = m.degree / (metrics.maxDegree || 1);
       const normalizedBetweenness = m.betweenness / (metrics.maxBetweenness || 1);
 
-      const sizeScore = normalizedDegree * DEGREE_WEIGHT + normalizedBetweenness * BETWEENNESS_WEIGHT;
+      // Calculate size score based on nodeSizeMode setting
+      let sizeScore;
+      switch (settings.nodeSizeMode) {
+        case 'connections':
+          sizeScore = normalizedDegree;
+          break;
+        case 'betweenness':
+          sizeScore = normalizedBetweenness;
+          break;
+        case 'both':
+        default:
+          sizeScore = normalizedDegree * DEGREE_WEIGHT + normalizedBetweenness * BETWEENNESS_WEIGHT;
+      }
       const size = MIN_NODE_SIZE + sizeScore * (MAX_NODE_SIZE - MIN_NODE_SIZE);
 
       // Restore position if this node existed before
@@ -392,7 +405,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     }));
 
     return { nodes, links };
-  }, [people, relationships]);
+  }, [people, relationships, settings.nodeSizeMode]);
 
   // Filtered graph data during progressive reveal
   const graphData = useMemo(() => {
@@ -1353,6 +1366,35 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
                     <span className="toggle-thumb" />
                   </span>
                 </button>
+              </div>
+
+              <div className="settings-segmented">
+                <label className="settings-label">
+                  <span>Node Size</span>
+                </label>
+                <div className="segmented-control">
+                  <button
+                    type="button"
+                    className={`segmented-btn ${settings.nodeSizeMode === 'connections' ? 'active' : ''}`}
+                    onClick={() => setSettings(prev => ({ ...prev, nodeSizeMode: 'connections' }))}
+                  >
+                    Connections
+                  </button>
+                  <button
+                    type="button"
+                    className={`segmented-btn ${settings.nodeSizeMode === 'betweenness' ? 'active' : ''}`}
+                    onClick={() => setSettings(prev => ({ ...prev, nodeSizeMode: 'betweenness' }))}
+                  >
+                    Influence
+                  </button>
+                  <button
+                    type="button"
+                    className={`segmented-btn ${settings.nodeSizeMode === 'both' ? 'active' : ''}`}
+                    onClick={() => setSettings(prev => ({ ...prev, nodeSizeMode: 'both' }))}
+                  >
+                    Both
+                  </button>
+                </div>
               </div>
 
               <button className="settings-reset" onClick={resetSettings}>Reset All</button>
