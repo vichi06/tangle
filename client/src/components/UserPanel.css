@@ -45,6 +45,22 @@
   background: none;
 }
 
+.admin-user-select {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+}
+
+.admin-user-select select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+}
+
 .panel-message {
   padding: 12px 20px;
   font-size: 13px;

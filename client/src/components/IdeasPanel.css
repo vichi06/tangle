@@ -1,0 +1,197 @@
+.ideas-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 380px;
+  max-width: 100vw;
+  height: 100%;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  animation: slideInLeft 0.2s ease;
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.ideas-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ideas-panel .panel-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.ideas-panel .close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.ideas-panel .close-btn:hover {
+  color: var(--text-primary);
+}
+
+.ideas-panel .panel-message {
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+.ideas-panel .panel-message.error {
+  background: rgba(255, 100, 100, 0.1);
+  color: #ff6b6b;
+}
+
+/* Message list */
+.ideas-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ideas-loading,
+.no-ideas {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px 20px;
+}
+
+/* Individual idea/message */
+.idea-item {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+}
+
+.idea-item.own {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+}
+
+.idea-avatar img,
+.idea-avatar .avatar-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.idea-avatar .avatar-placeholder {
+  background: var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.idea-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.idea-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.idea-sender {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.idea-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.idea-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  word-break: break-word;
+  margin: 0;
+}
+
+/* Input form */
+.idea-form {
+  padding: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.cooldown-notice {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.idea-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.idea-input-row textarea {
+  flex: 1;
+  min-height: 40px;
+  max-height: 100px;
+  resize: vertical;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.idea-input-row button {
+  padding: 10px 16px;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: none;
+  font-weight: 500;
+  align-self: flex-end;
+  border-radius: 4px;
+}
+
+.idea-input-row button:hover:not(:disabled) {
+  background: var(--text-secondary);
+}
+
+.idea-input-row button:disabled {
+  background: var(--border-color);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.char-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: 6px;
+}

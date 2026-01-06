@@ -8,24 +8,30 @@ const MAX_NODE_SIZE = 60;
 const DEGREE_WEIGHT = 0.4;
 const BETWEENNESS_WEIGHT = 0.6;
 
+// Progressive reveal timing
+const REVEAL_WAVE_DELAY = 500;      // ms between distance waves
+const REVEAL_NODE_STAGGER = 80;     // ms between nodes in same wave
+
 // Force simulation parameters (non-configurable)
 const LINK_STRENGTH = 0.8;
 const COLLISION_PADDING = 15;
 const CENTER_GRAVITY = 0.03;
-const UNCROSS_STRENGTH = 0.5;
+const UNCROSS_STRENGTH = 1.5;
+const EDGE_NODE_REPULSION = 50;
 
 // Default settings (configurable)
 const DEFAULT_SETTINGS = {
   repulsion: 12500,     // 1/r² repulsion strength
   linkDistance: 30,     // Target distance for connected nodes
   attraction: 10,       // 1/r attraction strength (clustering)
+  showCivBadge: true,   // Show CIV badge on nodes
 };
 
 // Slider ranges for percentage calculation
 const SLIDER_RANGES = {
-  repulsion: { min: 1000, max: 15000 },
-  linkDistance: { min: 30, max: 200 },
-  attraction: { min: 10, max: 150 },
+  repulsion: { min: 1000, max: 30000 },      // max x2
+  linkDistance: { min: 15, max: 66 },         // min /2, max /3
+  attraction: { min: 3, max: 75 },            // min /3, max /2
 };
 
 const toPercent = (value, key) => {
@@ -130,6 +136,75 @@ function forceUncross(links) {
   return force;
 }
 
+// Calculate shortest distance from point to line segment
+function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+
+  if (lenSq === 0) return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
+
+  // Project point onto line, clamped to segment
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+
+  const nearestX = x1 + t * dx;
+  const nearestY = y1 + t * dy;
+
+  return {
+    dist: Math.sqrt((px - nearestX) ** 2 + (py - nearestY) ** 2),
+    nearestX,
+    nearestY,
+    t
+  };
+}
+
+// Force to prevent edges from passing through non-endpoint nodes
+function forceEdgeAvoidNodes(links, nodes) {
+  function force(alpha) {
+    for (const link of links) {
+      const s = link.source;
+      const t = link.target;
+
+      for (const node of nodes) {
+        // Skip if node is an endpoint of this link
+        if (node === s || node === t) continue;
+
+        const result = pointToSegmentDistance(node.x, node.y, s.x, s.y, t.x, t.y);
+        const minDist = node.size / 2 + 10; // Node radius + padding
+
+        if (result.dist < minDist && result.t > 0.05 && result.t < 0.95) {
+          // Node is too close to edge (and not near endpoints)
+          const overlap = minDist - result.dist;
+          const strength = alpha * EDGE_NODE_REPULSION * (overlap / minDist);
+
+          // Direction from nearest point on edge to node
+          const dx = node.x - result.nearestX;
+          const dy = node.y - result.nearestY;
+          const dist = result.dist || 1;
+
+          const pushX = (dx / dist) * strength;
+          const pushY = (dy / dist) * strength;
+
+          // Push node away from edge
+          node.vx += pushX;
+          node.vy += pushY;
+
+          // Push edge endpoints away from node (smaller force)
+          const edgePush = strength * 0.3;
+          s.vx -= pushX * edgePush / strength;
+          s.vy -= pushY * edgePush / strength;
+          t.vx -= pushX * edgePush / strength;
+          t.vy -= pushY * edgePush / strength;
+        }
+      }
+    }
+  }
+
+  force.initialize = () => {};
+  return force;
+}
+
 // Initialize nodes in circular layout
 function initializeCircularLayout(nodes, width, height) {
   const count = nodes.length;
@@ -192,7 +267,59 @@ function calculateFitTransform(nodes, width, height, padding = 40) {
     .translate(-centerX, -centerY);
 }
 
-function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTooltip }) {
+// Generate BFS reveal order starting from a node, then jumping to disconnected clusters
+function generateRevealOrder(nodes, links, startNodeId) {
+  // Build adjacency list
+  const adjacency = new Map();
+  nodes.forEach(n => adjacency.set(n.id, []));
+  links.forEach(l => {
+    const srcId = l.source.id ?? l.source;
+    const tgtId = l.target.id ?? l.target;
+    adjacency.get(srcId)?.push(tgtId);
+    adjacency.get(tgtId)?.push(srcId);
+  });
+
+  const order = [];  // Array of arrays (waves)
+  const visited = new Set();
+  const nodeIds = nodes.map(n => n.id);
+
+  function bfsFrom(startId) {
+    if (visited.has(startId)) return;
+    const queue = [startId];
+    visited.add(startId);
+
+    while (queue.length > 0) {
+      const wave = [...queue];
+      order.push(wave);
+      queue.length = 0;
+
+      for (const nodeId of wave) {
+        for (const neighborId of adjacency.get(nodeId) || []) {
+          if (!visited.has(neighborId)) {
+            visited.add(neighborId);
+            queue.push(neighborId);
+          }
+        }
+      }
+    }
+  }
+
+  // Start from user node if valid
+  if (startNodeId && adjacency.has(startNodeId)) {
+    bfsFrom(startNodeId);
+  }
+
+  // Then any remaining disconnected clusters (in DB order)
+  for (const nodeId of nodeIds) {
+    if (!visited.has(nodeId)) {
+      bfsFrom(nodeId);
+    }
+  }
+
+  return order; // Array of waves (each wave = array of node IDs)
+}
+
+function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTooltip, onRefresh }) {
   const svgRef = useRef(null);
   const simulationRef = useRef(null);
   const zoomRef = useRef(null);
@@ -207,7 +334,14 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
   const linkIdsRef = useRef(new Set()); // Track existing link IDs
   const animatedLinksRef = useRef(new Set()); // Track which links have been animated
 
-  const graphData = useMemo(() => {
+  // Progressive reveal: false = not started (show nothing), Set = during reveal, null = complete (show all)
+  const [visibleNodeIds, setVisibleNodeIds] = useState(false);
+  const [positionsReady, setPositionsReady] = useState(false);
+  const revealTimeoutsRef = useRef([]);
+  const hasRevealedRef = useRef(false);
+
+  // Full graph data (all nodes/links) - used for BFS reveal order
+  const fullGraphData = useMemo(() => {
     if (people.length === 0) return { nodes: [], links: [] };
 
     const metrics = calculateMetrics(people, relationships);
@@ -260,6 +394,150 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     return { nodes, links };
   }, [people, relationships]);
 
+  // Filtered graph data during progressive reveal
+  const graphData = useMemo(() => {
+    // null = reveal complete, show all
+    if (visibleNodeIds === null) {
+      return fullGraphData;
+    }
+
+    // false = not started yet, show nothing (wait for effect to kick in)
+    if (visibleNodeIds === false) {
+      return { nodes: [], links: [] };
+    }
+
+    // Set = during reveal, filter to visible nodes only
+    const nodes = fullGraphData.nodes.filter(n => visibleNodeIds.has(n.id));
+
+    // Show links where both endpoints are visible
+    const links = fullGraphData.links.filter(l => {
+      const srcId = l.source.id ?? l.source;
+      const tgtId = l.target.id ?? l.target;
+      return visibleNodeIds.has(srcId) && visibleNodeIds.has(tgtId);
+    });
+
+    return { nodes, links };
+  }, [fullGraphData, visibleNodeIds]);
+
+  // Pre-compute stable positions for all nodes before reveal
+  useEffect(() => {
+    if (fullGraphData.nodes.length === 0 || hasRevealedRef.current || positionsReady) return;
+
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    // Initialize circular layout for all nodes
+    const nodes = fullGraphData.nodes.map(n => ({ ...n }));
+    initializeCircularLayout(nodes, width, height);
+
+    // Create temporary simulation to compute stable positions
+    const links = fullGraphData.links.map(l => ({
+      ...l,
+      source: l.source.id ?? l.source,
+      target: l.target.id ?? l.target
+    }));
+
+    const tempSim = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id(d => d.id).distance(50).strength(LINK_STRENGTH))
+      .force('physics', forceCustomPhysics(DEFAULT_SETTINGS.repulsion, DEFAULT_SETTINGS.attraction))
+      .force('x', d3.forceX(width / 2).strength(CENTER_GRAVITY))
+      .force('y', d3.forceY(height / 2).strength(CENTER_GRAVITY))
+      .force('collision', d3.forceCollide().radius(d => d.size / 2 + COLLISION_PADDING).strength(1))
+      .force('uncross', forceUncross(links))
+      .force('edgeAvoid', forceEdgeAvoidNodes(links, nodes))
+      .stop();
+
+    // Run simulation until settled
+    for (let i = 0; i < 300; i++) {
+      tempSim.tick();
+    }
+
+    // Store computed positions
+    nodes.forEach(node => {
+      nodePositionsRef.current.set(node.id, {
+        x: node.x,
+        y: node.y,
+        vx: 0,
+        vy: 0
+      });
+      // Also update fullGraphData nodes directly
+      const original = fullGraphData.nodes.find(n => n.id === node.id);
+      if (original) {
+        original.x = node.x;
+        original.y = node.y;
+        original.vx = 0;
+        original.vy = 0;
+      }
+    });
+
+    setPositionsReady(true);
+  }, [fullGraphData, positionsReady]);
+
+  // Trigger progressive reveal on first load
+  useEffect(() => {
+    // Skip if no data, already completed, or positions not ready
+    if (fullGraphData.nodes.length === 0 || hasRevealedRef.current || !positionsReady) return;
+
+    // Clear any pending timeouts from previous interrupted runs (StrictMode)
+    revealTimeoutsRef.current.forEach(clearTimeout);
+    revealTimeoutsRef.current = [];
+
+    // Generate reveal order (BFS from currentUserId)
+    const revealOrder = generateRevealOrder(
+      fullGraphData.nodes,
+      fullGraphData.links,
+      currentUserId
+    );
+
+    if (revealOrder.length === 0) return;
+
+    // Start with user node visible (first wave, no animation)
+    const firstWave = revealOrder[0];
+    const userNodeId = currentUserId && firstWave.includes(currentUserId) ? currentUserId : firstWave[0];
+
+    // Start with just the user node
+    setVisibleNodeIds(new Set([userNodeId]));
+
+    // Schedule remaining nodes in waves
+    let delay = REVEAL_WAVE_DELAY;
+
+    // Process remaining nodes in first wave (if any besides user)
+    const remainingFirstWave = firstWave.filter(id => id !== userNodeId);
+
+    // Combine remaining first wave with rest of waves
+    const wavesToAnimate = remainingFirstWave.length > 0
+      ? [remainingFirstWave, ...revealOrder.slice(1)]
+      : revealOrder.slice(1);
+
+    wavesToAnimate.forEach((wave) => {
+      wave.forEach((nodeId, nodeIndex) => {
+        const nodeDelay = delay + nodeIndex * REVEAL_NODE_STAGGER;
+        const timeout = setTimeout(() => {
+          setVisibleNodeIds(prev => {
+            const next = new Set(prev);
+            next.add(nodeId);
+            return next;
+          });
+        }, nodeDelay);
+        revealTimeoutsRef.current.push(timeout);
+      });
+      delay += REVEAL_WAVE_DELAY + wave.length * REVEAL_NODE_STAGGER;
+    });
+
+    // After all nodes revealed, mark as complete
+    const finalTimeout = setTimeout(() => {
+      setVisibleNodeIds(null);
+      hasRevealedRef.current = true; // Only mark complete when animation finishes
+    }, delay + 500);
+    revealTimeoutsRef.current.push(finalTimeout);
+
+    // Cleanup pending timeouts on re-run (allows animation restart in StrictMode)
+    return () => {
+      revealTimeoutsRef.current.forEach(clearTimeout);
+      revealTimeoutsRef.current = [];
+    };
+  }, [fullGraphData, currentUserId, positionsReady]);
+
   const handleReset = useCallback(() => {
     if (!simulationRef.current || !svgRef.current || !zoomRef.current) return;
 
@@ -292,6 +570,13 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
   // Update simulation when settings change
   useEffect(() => {
     settingsRef.current = settings;
+
+    // Update CIV badge visibility on all nodes (gRef.current is a D3 selection)
+    if (gRef.current) {
+      gRef.current.selectAll('.verified-badge')
+        .style('display', settings.showCivBadge ? null : 'none');
+    }
+
     if (!simulationRef.current) return;
 
     const linkForce = simulationRef.current.force('link');
@@ -309,6 +594,10 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     setSettings(prev => ({ ...prev, [key]: Number(value) }));
   };
 
+  const toggleSetting = (key) => {
+    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const resetSettings = () => {
     setSettings(DEFAULT_SETTINGS);
   };
@@ -321,7 +610,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     const height = window.innerHeight;
 
     // Intensity stroke widths
-    const intensityStroke = { kiss: 1, cuddle: 3, couple: 5, hidden: 1 };
+    const intensityStroke = { kiss: 1, cuddle: 1.5, couple: 2, hidden: 1 };
 
     // Detect touch device
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -503,14 +792,30 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       .attr('class', d => d.id === currentUserId ? 'node current-user' : 'node')
       .attr('transform', d => `translate(${d.x},${d.y})`);
 
+    // Check if we're in reveal mode (visibleNodeIds is a Set)
+    const isRevealMode = visibleNodeIds instanceof Set;
+
     // Add all node sub-elements to entering nodes (wrapped in scale group)
     nodeEnter.each(function(d) {
       const nodeG = d3.select(this);
 
-      // Inner group for scale animation (starts at scale 0 only if animating)
+      // Animate scale during reveal or when new node is added
+      const shouldAnimate = isRevealMode || d._isAnimatingIn;
+
+      // Backing circle (stays opaque when node fades, prevents edges showing through)
+      nodeG.append('circle')
+        .attr('class', 'node-backing')
+        .attr('r', d.size / 2 + 2)
+        .attr('fill', '#0a0a0a')
+        .attr('transform', shouldAnimate ? 'scale(0)' : 'scale(1)');
+
+      // Inner group for scale animation (starts at scale 0 if animating)
       const scaleGroup = nodeG.append('g')
         .attr('class', 'node-scale-group')
-        .attr('transform', d._isAnimatingIn ? 'scale(0)' : 'scale(1)');
+        .attr('transform', shouldAnimate ? 'scale(0)' : 'scale(1)');
+
+      // Mark for animation
+      d._shouldAnimate = shouldAnimate;
 
       // Clip path
       scaleGroup.append('clipPath')
@@ -547,11 +852,12 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         .attr('class', 'node-border')
         .attr('r', d.size / 2);
 
-      // CIV badge
-      if (d.isCiv == 1 || d.isCiv === true) {
+      // CIV badge (always create if isCiv, visibility controlled by CSS/display)
+      if (d.isCiv) {
         const badge = scaleGroup.append('g')
           .attr('class', 'verified-badge')
-          .attr('transform', `translate(${d.size / 2 - d.size * 0.1}, ${-d.size / 2 + d.size * 0.1})`);
+          .attr('transform', `translate(${d.size / 2 - d.size * 0.1}, ${-d.size / 2 + d.size * 0.1})`)
+          .style('display', settingsRef.current.showCivBadge ? null : 'none');
 
         badge.append('circle')
           .attr('r', d.size * 0.2)
@@ -567,43 +873,89 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       }
     });
 
-    // Animate new nodes scaling in with smooth bounce and hearts effect (only for newly added nodes, not on page load)
-    nodeEnter.filter(d => d._isAnimatingIn).select('.node-scale-group')
+    // Icon paths for different relationship types
+    // Heart for couple
+    const heartPath = 'M0,-3 C-1.5,-5 -5,-5 -5,-2 C-5,1 0,5 0,5 C0,5 5,1 5,-2 C5,-5 1.5,-5 0,-3 Z';
+    // Lipstick kiss mark for kiss
+    const kissPath = 'M-4,0 C-4,-2 -2,-3 0,-1 C2,-3 4,-2 4,0 C4,2 2,4 0,3 C-2,4 -4,2 -4,0 Z';
+    // Peach emoji for cuddle
+    const peachPath = 'M0,-4 C-1,-4 -1,-3 -1,-2 C-4,-2 -5,1 -4,3 C-3,5 -1,5 0,4 C1,5 3,5 4,3 C5,1 4,-2 1,-2 C1,-3 1,-4 0,-4 Z';
+
+    // Function to get relationship intensity for a node
+    const getNodeRelationshipIntensity = (nodeId) => {
+      const nodeLinks = graphData.links.filter(l => {
+        const srcId = l.source.id ?? l.source;
+        const tgtId = l.target.id ?? l.target;
+        return srcId === nodeId || tgtId === nodeId;
+      });
+      if (nodeLinks.length === 0) return 'kiss';
+      // Priority: couple > cuddle > kiss
+      if (nodeLinks.some(l => l.intensity === 'couple')) return 'couple';
+      if (nodeLinks.some(l => l.intensity === 'cuddle')) return 'cuddle';
+      return 'kiss';
+    };
+
+
+    // Animate backing circle scaling in
+    nodeEnter.filter(d => d._shouldAnimate).select('.node-backing')
       .transition()
-      .duration(1000)
+      .duration(800)
+      .ease(d3.easeElasticOut.amplitude(1).period(0.5))
+      .attr('transform', 'scale(1)');
+
+    // Animate nodes scaling in with bounce and icon burst effect
+    nodeEnter.filter(d => d._shouldAnimate).select('.node-scale-group')
+      .transition()
+      .duration(800)
       .ease(d3.easeElasticOut.amplitude(1).period(0.5))
       .attr('transform', 'scale(1)')
       .on('end', function() {
-        // Create celebration burst effect on the parent node group
         const nodeG = d3.select(this.parentNode);
         const d = nodeG.datum();
 
         // Release fixed position so simulation can take over
-        d.fx = null;
-        d.fy = null;
-        d._isAnimatingIn = false;
-        // Gentle restart to let node find its place
-        if (simulationRef.current) {
-          simulationRef.current.alpha(0.2).restart();
+        if (d._isAnimatingIn) {
+          d.fx = null;
+          d.fy = null;
+          d._isAnimatingIn = false;
+          if (simulationRef.current) {
+            simulationRef.current.alpha(0.2).restart();
+          }
         }
 
-        const heartsGroup = nodeG.append('g').attr('class', 'hearts-effect');
-        const numHearts = 6;
-        const startRadius = d.size / 2 + 5;
-        const heartPath = 'M0,-3 C-1.5,-5 -5,-5 -5,-2 C-5,1 0,5 0,5 C0,5 5,1 5,-2 C5,-5 1.5,-5 0,-3 Z';
+        // Get relationship type for this node
+        const intensity = getNodeRelationshipIntensity(d.id);
 
-        for (let i = 0; i < numHearts; i++) {
-          const angle = (2 * Math.PI * i) / numHearts - Math.PI / 2;
+        // Choose icon based on relationship type
+        let iconPath, iconColor;
+        if (intensity === 'couple') {
+          iconPath = heartPath;
+          iconColor = '#ff6b9d';
+        } else if (intensity === 'cuddle') {
+          iconPath = peachPath;
+          iconColor = '#ffab6b';
+        } else {
+          iconPath = kissPath;
+          iconColor = '#ff6b9d';
+        }
+
+        // Create burst effect
+        const effectGroup = nodeG.append('g').attr('class', 'burst-effect');
+        const numIcons = 6;
+        const startRadius = d.size / 2 + 5;
+
+        for (let i = 0; i < numIcons; i++) {
+          const angle = (2 * Math.PI * i) / numIcons - Math.PI / 2;
           const startX = Math.cos(angle) * startRadius;
           const startY = Math.sin(angle) * startRadius;
           const endX = Math.cos(angle) * (startRadius + d.size * 0.6);
           const endY = Math.sin(angle) * (startRadius + d.size * 0.6) - 10;
           const delay = i * 50;
 
-          heartsGroup.append('path')
-            .attr('d', heartPath)
+          effectGroup.append('path')
+            .attr('d', iconPath)
             .attr('transform', `translate(${startX},${startY}) scale(0)`)
-            .attr('fill', '#ff6b9d')
+            .attr('fill', iconColor)
             .attr('opacity', 0)
             .transition()
             .delay(delay)
@@ -619,8 +971,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
             .remove();
         }
 
-        // Remove hearts group after animation
-        setTimeout(() => heartsGroup.remove(), 1200);
+        setTimeout(() => effectGroup.remove(), 1200);
       });
 
     // Merge for updates
@@ -630,6 +981,12 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     nodeSelection.each(function(d) {
       const nodeG = d3.select(this);
       const scaleGroup = nodeG.select('.node-scale-group');
+
+      // Animate backing circle
+      nodeG.select('.node-backing')
+        .transition()
+        .duration(500)
+        .attr('r', d.size / 2 + 2);
 
       // Animate circle sizes
       scaleGroup.select('clipPath circle')
@@ -679,11 +1036,79 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         .attr('font-size', d.size * 0.14);
     });
 
+    // Calculate BFS distances from a node
+    const calculateDistances = (startId) => {
+      const distances = new Map();
+      distances.set(startId, 0);
+      const queue = [startId];
+
+      // Build adjacency from current links
+      const adj = new Map();
+      graphData.nodes.forEach(n => adj.set(n.id, []));
+      graphData.links.forEach(l => {
+        const srcId = l.source.id ?? l.source;
+        const tgtId = l.target.id ?? l.target;
+        adj.get(srcId)?.push(tgtId);
+        adj.get(tgtId)?.push(srcId);
+      });
+
+      while (queue.length > 0) {
+        const current = queue.shift();
+        const currentDist = distances.get(current);
+        for (const neighbor of adj.get(current) || []) {
+          if (!distances.has(neighbor)) {
+            distances.set(neighbor, currentDist + 1);
+            queue.push(neighbor);
+          }
+        }
+      }
+      return distances;
+    };
+
     // Node interaction
     const highlightNode = (d, highlight) => {
-      node.filter(n => n.id === d.id).classed('highlighted', highlight);
-      link.classed('connected', l => highlight && (l.source.id === d.id || l.target.id === d.id));
-      link.classed('dimmed', l => highlight && l.source.id !== d.id && l.target.id !== d.id);
+      if (highlight) {
+        const distances = calculateDistances(d.id);
+        const maxDist = Math.max(...distances.values(), 1);
+
+        // Apply distance-based styling to nodes
+        node.each(function(n) {
+          const dist = distances.get(n.id);
+          const nodeEl = d3.select(this);
+
+          if (n.id === d.id) {
+            nodeEl.classed('highlighted', true);
+            nodeEl.attr('data-distance', '0');
+          } else if (dist !== undefined) {
+            nodeEl.classed('highlighted', false);
+            nodeEl.attr('data-distance', Math.min(dist, 5)); // Cap at 5 for CSS
+          } else {
+            // Disconnected node
+            nodeEl.classed('highlighted', false);
+            nodeEl.attr('data-distance', 'disconnected');
+          }
+        });
+
+        // Style links based on whether they connect to hovered node
+        link.each(function(l) {
+          const linkEl = d3.select(this);
+          const srcDist = distances.get(l.source.id) ?? Infinity;
+          const tgtDist = distances.get(l.target.id) ?? Infinity;
+          const minDist = Math.min(srcDist, tgtDist);
+
+          if (l.source.id === d.id || l.target.id === d.id) {
+            linkEl.classed('connected', true).classed('dimmed', false);
+            linkEl.attr('data-distance', '0');
+          } else {
+            linkEl.classed('connected', false).classed('dimmed', true);
+            linkEl.attr('data-distance', Math.min(minDist, 5));
+          }
+        });
+      } else {
+        // Reset all
+        node.classed('highlighted', false).attr('data-distance', null);
+        link.classed('connected dimmed', false).attr('data-distance', null);
+      }
     };
 
     if (isTouchDevice) {
@@ -743,8 +1168,9 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
           .radius(d => d.size / 2 + COLLISION_PADDING)
           .strength(1))
         .force('uncross', forceUncross(graphData.links))
-        .alphaDecay(0.01)
-        .velocityDecay(0.4);
+        .force('edgeAvoid', forceEdgeAvoidNodes(graphData.links, graphData.nodes))
+        .alphaDecay(0.02)
+        .velocityDecay(0.5);
 
       simulationRef.current = simulation;
     } else {
@@ -752,6 +1178,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       simulation.nodes(graphData.nodes);
       simulation.force('link').links(graphData.links);
       simulation.force('uncross', forceUncross(graphData.links));
+      simulation.force('edgeAvoid', forceEdgeAvoidNodes(graphData.links, graphData.nodes));
       // Gentle restart - new nodes are fixed, so only minor adjustments
       simulation.alpha(0.1).restart();
     }
@@ -841,7 +1268,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       window.removeEventListener('resize', handleResize);
       // Note: Don't stop simulation here as it's reused across renders
     };
-  }, [graphData, currentUserId, onShowTooltip, onHideTooltip]);
+  }, [graphData, currentUserId, onShowTooltip, onHideTooltip, visibleNodeIds]);
 
   return (
     <div className="graph-container">
@@ -912,6 +1339,22 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
                 onTouchEnd={() => setDragging(null)}
               />
 
+              <div className="settings-toggle">
+                <label className="settings-label">
+                  <span>Show CIV Badge</span>
+                </label>
+                <button
+                  type="button"
+                  className={`toggle-btn ${settings.showCivBadge ? 'active' : ''}`}
+                  onClick={() => toggleSetting('showCivBadge')}
+                  aria-pressed={settings.showCivBadge}
+                >
+                  <span className="toggle-track">
+                    <span className="toggle-thumb" />
+                  </span>
+                </button>
+              </div>
+
               <button className="settings-reset" onClick={resetSettings}>Reset All</button>
             </div>
           )}
@@ -923,10 +1366,22 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </button>
-            <button className="graph-button" onClick={handleReset} title="Reset graph">
+            <button className="graph-button" onClick={onRefresh} title="Refresh data">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                 <path d="M3 3v5h5" />
+              </svg>
+            </button>
+            <button className="graph-button" onClick={handleReset} title="Rearrange layout">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 3h5v5" />
+                <path d="M8 3H3v5" />
+                <path d="M21 3l-7 7" />
+                <path d="M3 3l7 7" />
+                <path d="M16 21h5v-5" />
+                <path d="M8 21H3v-5" />
+                <path d="M21 21l-7-7" />
+                <path d="M3 21l7-7" />
               </svg>
             </button>
           </div>

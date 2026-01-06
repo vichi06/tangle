@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import peopleRoutes from './routes/people.js';
 import relationshipsRoutes from './routes/relationships.js';
 import importExportRoutes from './routes/import-export.js';
+import ideasRoutes from './routes/ideas.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +24,7 @@ app.use(express.json({ limit: '50mb' }));
 // API Routes
 app.use('/api/people', peopleRoutes);
 app.use('/api/relationships', relationshipsRoutes);
+app.use('/api/ideas', ideasRoutes);
 app.use('/api', importExportRoutes);
 
 // Serve static files in production

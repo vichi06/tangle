@@ -5,8 +5,15 @@ CREATE TABLE IF NOT EXISTS people (
   avatar TEXT,
   bio TEXT,
   is_civ INTEGER DEFAULT 0,
+  is_admin INTEGER DEFAULT 0,
+  admin_code TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migration for existing databases (will fail silently if columns exist)
+-- Run these manually if needed:
+-- ALTER TABLE people ADD COLUMN is_admin INTEGER DEFAULT 0;
+-- ALTER TABLE people ADD COLUMN admin_code TEXT;
 
 CREATE TABLE IF NOT EXISTS relationships (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,3 +30,14 @@ CREATE TABLE IF NOT EXISTS relationships (
 
 CREATE INDEX IF NOT EXISTS idx_rel_person1 ON relationships(person1_id);
 CREATE INDEX IF NOT EXISTS idx_rel_person2 ON relationships(person2_id);
+
+CREATE TABLE IF NOT EXISTS ideas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sender_id INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (sender_id) REFERENCES people(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_ideas_sender ON ideas(sender_id);
+CREATE INDEX IF NOT EXISTS idx_ideas_created ON ideas(created_at DESC);

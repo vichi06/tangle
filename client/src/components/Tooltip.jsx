@@ -1,9 +1,14 @@
 import { useMemo } from 'react';
-import { useLanguage } from '../i18n/LanguageContext';
 import './Tooltip.css';
 
+const INTENSITY_LABELS = {
+  kiss: 'Kiss',
+  cuddle: 'Cuddle in bed',
+  couple: 'Couple',
+  hidden: 'Hidden'
+};
+
 function Tooltip({ data, position, onClose }) {
-  const { t } = useLanguage();
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
   const pos = useMemo(() => {
@@ -43,7 +48,7 @@ function Tooltip({ data, position, onClose }) {
           <p className="tooltip-bio">{data.bio}</p>
         )}
         <p className="tooltip-connections">
-          {data.connections} {t('connections')}
+          {data.connections} connections
         </p>
       </div>
     </div>
@@ -56,7 +61,7 @@ function Tooltip({ data, position, onClose }) {
       </p>
       {data.intensity && (
         <p className="tooltip-intensity">
-          {t(data.intensity)}
+          {INTENSITY_LABELS[data.intensity] || data.intensity}
         </p>
       )}
       {data.date && (
