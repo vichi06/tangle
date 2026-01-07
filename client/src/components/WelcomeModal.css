@@ -389,3 +389,46 @@
   outline: none;
   border-color: #f59e0b;
 }
+
+/* Pending user styles */
+.person-card.pending {
+  border: 1px dashed #555;
+  opacity: 0.85;
+}
+
+.person-avatar.pending,
+.person-avatar-placeholder.pending {
+  filter: blur(2px) grayscale(40%);
+  opacity: 0.7;
+}
+
+.confirm-avatar.pending,
+.confirm-avatar-placeholder.pending {
+  filter: blur(2px) grayscale(40%);
+  opacity: 0.8;
+  border-style: dashed;
+}
+
+.pending-badge {
+  display: inline-block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  background: #3a3a4a;
+  color: #999;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.pending-explain {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  background: linear-gradient(135deg, #1a2a3a 0%, #0f1a24 100%);
+  border: 1px solid #2a4a6a;
+  padding: 16px 20px;
+  border-radius: 10px;
+  max-width: 320px;
+  text-align: center;
+}

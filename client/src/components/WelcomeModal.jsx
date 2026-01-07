@@ -28,6 +28,8 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
       setCodeDigits(['', '', '', '']);
       setMode('admin-verify');
       setTimeout(() => digitRefs[0].current?.focus(), 100);
+    } else if (person.is_pending) {
+      setMode('pending-confirm');
     } else {
       setMode('confirm');
     }
@@ -148,19 +150,24 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
                 {filteredPeople.map(person => (
                   <button
                     key={person.id}
-                    className="person-card"
+                    className={`person-card ${person.is_pending ? 'pending' : ''}`}
                     onClick={() => handleSelectPerson(person)}
                   >
                     {person.avatar ? (
-                      <img src={person.avatar} alt="" className="person-avatar" />
+                      <img
+                        src={person.avatar}
+                        alt=""
+                        className={`person-avatar ${person.is_pending ? 'pending' : ''}`}
+                      />
                     ) : (
-                      <div className="person-avatar-placeholder">
+                      <div className={`person-avatar-placeholder ${person.is_pending ? 'pending' : ''}`}>
                         {person.first_name.charAt(0)}
                       </div>
                     )}
                     <span className="person-name">
                       {person.first_name} {person.last_name}
                     </span>
+                    {!!person.is_pending && <span className="pending-badge">Pending</span>}
                   </button>
                 ))}
               </div>
@@ -220,6 +227,33 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
                 disabled={verifying || codeDigits.some(d => !d)}
               >
                 {verifying ? 'Verifying...' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        ) : mode === 'pending-confirm' && pendingSelection ? (
+          <div className="confirm-selection pending-confirm">
+            <div className="confirm-person">
+              {pendingSelection.avatar ? (
+                <img src={pendingSelection.avatar} alt="" className="confirm-avatar pending" />
+              ) : (
+                <div className="confirm-avatar-placeholder pending">
+                  {pendingSelection.first_name.charAt(0)}
+                </div>
+              )}
+              <span className="confirm-name">
+                {pendingSelection.first_name} {pendingSelection.last_name}
+              </span>
+              <span className="pending-badge">Pending Profile</span>
+            </div>
+            <p className="pending-explain">
+              Someone added you to the graph. Review your relationships and confirm your profile to activate it.
+            </p>
+            <div className="confirm-actions">
+              <button className="back-btn" onClick={cancelSelection}>
+                Back
+              </button>
+              <button className="create-btn" onClick={confirmSelection}>
+                Continue
               </button>
             </div>
           </div>

@@ -378,6 +378,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         avatar: person.avatar,
         bio: person.bio,
         isCiv: person.is_civ,
+        isPending: !!person.is_pending,
         degree: m.degree,
         betweenness: m.betweenness,
         size,
@@ -392,17 +393,25 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     });
 
     const existingLinkIds = linkIdsRef.current;
-    const links = relationships.map(rel => ({
-      id: rel.id,
-      source: rel.person1_id,
-      target: rel.person2_id,
-      intensity: rel.intensity || 'kiss',
-      date: rel.date,
-      context: rel.context,
-      person1Name: `${rel.person1_first_name} ${rel.person1_last_name}`,
-      person2Name: `${rel.person2_first_name} ${rel.person2_last_name}`,
-      isNew: !existingLinkIds.has(rel.id)
-    }));
+    // Create a map for quick person lookup
+    const peopleMap = new Map(people.map(p => [p.id, p]));
+    const links = relationships.map(rel => {
+      const person1 = peopleMap.get(rel.person1_id);
+      const person2 = peopleMap.get(rel.person2_id);
+      const isPending = !!(person1?.is_pending || person2?.is_pending);
+      return {
+        id: rel.id,
+        source: rel.person1_id,
+        target: rel.person2_id,
+        intensity: rel.intensity || 'kiss',
+        date: rel.date,
+        context: rel.context,
+        person1Name: `${rel.person1_first_name} ${rel.person1_last_name}`,
+        person2Name: `${rel.person2_first_name} ${rel.person2_last_name}`,
+        isNew: !existingLinkIds.has(rel.id),
+        isPending
+      };
+    });
 
     return { nodes, links };
   }, [people, relationships, settings.nodeSizeMode]);
@@ -737,7 +746,11 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     // ENTER: New links
     const linkEnter = linkSelection.enter()
       .append('line')
-      .attr('class', d => `link-visible link intensity-${d.intensity}`)
+      .attr('class', d => {
+        let classes = `link-visible link intensity-${d.intensity}`;
+        if (d.isPending) classes += ' pending';
+        return classes;
+      })
       .attr('stroke-width', d => intensityStroke[d.intensity] || 1)
       .each(function(d) {
         // Mark for animation only if not first render
@@ -746,6 +759,13 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
 
     // Merge for updates
     const link = linkEnter.merge(linkSelection);
+
+    // Update classes for all links (handles pending state changes)
+    link.attr('class', d => {
+      let classes = `link-visible link intensity-${d.intensity}`;
+      if (d.isPending) classes += ' pending';
+      return classes;
+    });
 
     // Hit areas for links
     const linkHitSelection = linksGroup.selectAll('line.link-hit')
@@ -802,7 +822,12 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     // ENTER: New nodes - position group follows simulation, inner group handles scale
     const nodeEnter = nodeSelection.enter()
       .append('g')
-      .attr('class', d => d.id === currentUserId ? 'node current-user' : 'node')
+      .attr('class', d => {
+        let classes = 'node';
+        if (d.id === currentUserId) classes += ' current-user';
+        if (d.isPending) classes += ' pending';
+        return classes;
+      })
       .attr('transform', d => `translate(${d.x},${d.y})`);
 
     // Check if we're in reveal mode (visibleNodeIds is a Set)
@@ -989,6 +1014,14 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
 
     // Merge for updates
     const node = nodeEnter.merge(nodeSelection);
+
+    // Update classes for all nodes (handles pending state changes)
+    node.attr('class', d => {
+      let classes = 'node';
+      if (d.id === currentUserId) classes += ' current-user';
+      if (d.isPending) classes += ' pending';
+      return classes;
+    });
 
     // UPDATE: Animate size changes for existing nodes
     nodeSelection.each(function(d) {
