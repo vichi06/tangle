@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/', (req, res) => {
   try {
     const people = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, created_at
+      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, is_pending, created_at
       FROM people ORDER BY last_name, first_name
     `).all();
     res.json(people);
@@ -20,7 +20,7 @@ router.get('/', (req, res) => {
 router.get('/:id', (req, res) => {
   try {
     const person = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, created_at
+      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, is_pending, created_at
       FROM people WHERE id = ?
     `).get(req.params.id);
     if (!person) {
@@ -34,15 +34,15 @@ router.get('/:id', (req, res) => {
 
 // Create person
 router.post('/', (req, res) => {
-  const { first_name, last_name, avatar, bio, is_civ } = req.body;
+  const { first_name, last_name, avatar, bio, is_civ, is_pending } = req.body;
   if (!first_name || !last_name) {
     return res.status(400).json({ error: 'First name and last name are required' });
   }
   try {
-    const stmt = db.prepare('INSERT INTO people (first_name, last_name, avatar, bio, is_civ) VALUES (?, ?, ?, ?, ?)');
-    const result = stmt.run(first_name, last_name, avatar || null, bio || null, is_civ ? 1 : 0);
+    const stmt = db.prepare('INSERT INTO people (first_name, last_name, avatar, bio, is_civ, is_pending) VALUES (?, ?, ?, ?, ?, ?)');
+    const result = stmt.run(first_name, last_name, avatar || null, bio || null, is_civ ? 1 : 0, is_pending ? 1 : 0);
     const person = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, created_at
+      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, is_pending, created_at
       FROM people WHERE id = ?
     `).get(result.lastInsertRowid);
     res.status(201).json(person);
@@ -69,7 +69,7 @@ router.put('/:id', (req, res) => {
       req.params.id
     );
     const person = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, created_at
+      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, is_pending, created_at
       FROM people WHERE id = ?
     `).get(req.params.id);
     res.json(person);
@@ -94,6 +94,27 @@ router.post('/:id/verify-code', (req, res) => {
     } else {
       res.status(401).json({ error: 'Invalid code' });
     }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Confirm pending user profile
+router.post('/:id/confirm', (req, res) => {
+  try {
+    const person = db.prepare('SELECT * FROM people WHERE id = ?').get(req.params.id);
+    if (!person) {
+      return res.status(404).json({ error: 'Person not found' });
+    }
+    if (!person.is_pending) {
+      return res.status(400).json({ error: 'User is not pending' });
+    }
+    db.prepare('UPDATE people SET is_pending = 0 WHERE id = ?').run(req.params.id);
+    const updated = db.prepare(`
+      SELECT id, first_name, last_name, avatar, bio, is_civ, is_admin, is_pending, created_at
+      FROM people WHERE id = ?
+    `).get(req.params.id);
+    res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

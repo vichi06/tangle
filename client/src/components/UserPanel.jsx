@@ -104,11 +104,11 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
 
     setLoading(true);
     try {
-      // Create the new person
+      // Create the new person (marked as pending until they log in and confirm)
       const personRes = await fetch(`${API_BASE}/people`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPerson)
+        body: JSON.stringify({ ...newPerson, is_pending: true })
       });
 
       if (!personRes.ok) throw new Error('Failed to create person');
@@ -194,6 +194,24 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
     }
   };
 
+  const confirmProfile = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/people/${currentUser.id}/confirm`, {
+        method: 'POST'
+      });
+      if (!res.ok) throw new Error('Failed to confirm profile');
+      onDataChange();
+      showMessage('Profile confirmed!');
+    } catch (err) {
+      showMessage(err.message, true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isPendingUser = !!currentUser.is_pending;
+
   const IntensityRadios = ({ value, onChange }) => (
     <div className="intensity-options">
       {INTENSITY_OPTIONS.map(opt => (
@@ -240,6 +258,16 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
       {message && (
         <div className={`panel-message ${message.isError ? 'error' : 'success'}`}>
           {message.text}
+        </div>
+      )}
+
+      {isPendingUser && (
+        <div className="pending-banner">
+          <p>Your profile is pending confirmation</p>
+          <p className="pending-subtext">Someone added you to the graph. Confirm to activate your profile.</p>
+          <button onClick={confirmProfile} disabled={loading}>
+            {loading ? 'Confirming...' : 'Confirm My Profile'}
+          </button>
         </div>
       )}
 

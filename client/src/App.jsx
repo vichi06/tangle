@@ -75,6 +75,16 @@ function App() {
     }
   }, [loading, people, userChecked]);
 
+  // Sync currentUser with people array when data refreshes
+  useEffect(() => {
+    if (currentUser && people.length > 0) {
+      const updatedUser = people.find(p => p.id === currentUser.id);
+      if (updatedUser && JSON.stringify(updatedUser) !== JSON.stringify(currentUser)) {
+        setCurrentUser(updatedUser);
+      }
+    }
+  }, [people, currentUser]);
+
   const handleShowTooltip = useCallback((data, position) => {
     setTooltip({ data, position });
   }, []);

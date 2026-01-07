@@ -77,6 +77,51 @@
   color: #e57373;
 }
 
+/* Pending user banner */
+.pending-banner {
+  background: linear-gradient(135deg, #1a2a3a 0%, #0f1a24 100%);
+  border: 1px solid #2a4a6a;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 20px;
+  text-align: center;
+}
+
+.pending-banner p {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+  margin: 0 0 6px 0;
+}
+
+.pending-banner .pending-subtext {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  margin-bottom: 16px;
+}
+
+.pending-banner button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.pending-banner button:hover {
+  background: #2563eb;
+}
+
+.pending-banner button:disabled {
+  background: #4a5568;
+  cursor: not-allowed;
+}
+
 .panel-content {
   flex: 1;
   overflow-y: auto;
