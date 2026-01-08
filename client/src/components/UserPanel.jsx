@@ -221,6 +221,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
           key={opt.value}
           type="button"
           className={`intensity-option ${value === opt.value ? 'selected' : ''}`}
+          data-intensity={opt.value}
           onClick={() => onChange(opt.value)}
         >
           <span className={`intensity-dot intensity-${opt.value}`} />
