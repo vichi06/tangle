@@ -138,6 +138,86 @@ function forceUncross(links) {
   return force;
 }
 
+// Smooth falloff function - returns 1 at distance 0, smoothly approaches 0
+function smoothFalloff(distance, threshold) {
+  if (distance >= threshold) return 0;
+  // Cubic ease-out for smooth transition
+  const t = distance / threshold;
+  return (1 - t) * (1 - t) * (1 - t);
+}
+
+// Calculate cubic Bezier path that curves away from nearby nodes
+function calculateCurvedPath(source, target, nodes, curveFactor = 50) {
+  const x1 = source.x, y1 = source.y;
+  const x2 = target.x, y2 = target.y;
+  
+  // Edge direction
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1) return `M${x1},${y1}L${x2},${y2}`;
+  
+  // Find nodes that are close to the edge and calculate push direction
+  let pushX = 0, pushY = 0;
+  
+  for (const node of nodes) {
+    if (node === source || node === target) continue;
+    
+    // Check if node is close to the line segment
+    const nodeToStart = { x: node.x - x1, y: node.y - y1 };
+    const projection = (nodeToStart.x * dx + nodeToStart.y * dy) / (len * len);
+    
+    // Smooth falloff at edge endpoints (0.0-0.15 and 0.85-1.0)
+    let edgeFactor = 1;
+    if (projection < 0.15) {
+      edgeFactor = projection / 0.15;
+    } else if (projection > 0.85) {
+      edgeFactor = (1 - projection) / 0.15;
+    }
+    if (projection < 0 || projection > 1) continue;
+    
+    // Point on the line closest to the node
+    const closestX = x1 + projection * dx;
+    const closestY = y1 + projection * dy;
+    
+    // Distance from node to the line
+    const distToLine = Math.sqrt(
+      (node.x - closestX) ** 2 + (node.y - closestY) ** 2
+    );
+    
+    // Use smooth falloff instead of hard threshold
+    const threshold = (node.size || 30) + 80;
+    const pushStrength = smoothFalloff(distToLine, threshold) * edgeFactor;
+    
+    if (pushStrength > 0.001) {
+      // Direction from node to closest point on line (we push AWAY from node)
+      const awayX = closestX - node.x;
+      const awayY = closestY - node.y;
+      const awayDist = distToLine || 1;
+      
+      pushX += (awayX / awayDist) * pushStrength * curveFactor;
+      pushY += (awayY / awayDist) * pushStrength * curveFactor;
+    }
+  }
+  
+  // Cap the push magnitude smoothly
+  const pushMagnitude = Math.sqrt(pushX * pushX + pushY * pushY);
+  const maxPush = Math.min(len * 0.4, curveFactor * 2);
+  if (pushMagnitude > maxPush) {
+    const scale = maxPush / pushMagnitude;
+    pushX *= scale;
+    pushY *= scale;
+  }
+  
+  // Control points for cubic Bezier - offset from 1/3 and 2/3 points
+  const cp1x = x1 + dx * 0.33 + pushX * 0.5;
+  const cp1y = y1 + dy * 0.33 + pushY * 0.5;
+  const cp2x = x1 + dx * 0.66 + pushX * 0.5;
+  const cp2y = y1 + dy * 0.66 + pushY * 0.5;
+  
+  return `M${x1},${y1}C${cp1x},${cp1y} ${cp2x},${cp2y} ${x2},${y2}`;
+}
+
 // Calculate shortest distance from point to line segment
 function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
   const dx = x2 - x1;
@@ -769,20 +849,21 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     const linksGroup = g.select('.links');
 
     // Data join for visible links with key function
-    const linkSelection = linksGroup.selectAll('line.link-visible')
+    const linkSelection = linksGroup.selectAll('path.link-visible')
       .data(visibleLinks, d => d.id);
 
     // EXIT: Remove old links
     linkSelection.exit().remove();
 
-    // ENTER: New links
+    // ENTER: New links (now using path for Bezier curves)
     const linkEnter = linkSelection.enter()
-      .append('line')
+      .append('path')
       .attr('class', d => {
         let classes = `link-visible link intensity-${d.intensity}`;
         if (d.isPending) classes += ' pending';
         return classes;
       })
+      .attr('fill', 'none')
       .attr('stroke-width', d => intensityStroke[d.intensity] || 1)
       .each(function(d) {
         // Mark for animation only if not first render
@@ -799,15 +880,16 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       return classes;
     });
 
-    // Hit areas for links
-    const linkHitSelection = linksGroup.selectAll('line.link-hit')
+    // Hit areas for links (using paths to match the curved visible links)
+    const linkHitSelection = linksGroup.selectAll('path.link-hit')
       .data(visibleLinks, d => d.id);
 
     linkHitSelection.exit().remove();
 
     const linkHitEnter = linkHitSelection.enter()
-      .append('line')
+      .append('path')
       .attr('class', 'link-hit')
+      .attr('fill', 'none')
       .attr('stroke', 'transparent')
       .attr('stroke-width', 20)
       .style('cursor', 'pointer');
@@ -1226,21 +1308,18 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
 
     // Update positions on tick
     simulation.on('tick', () => {
-      // Update link positions and animate new links
+      // Update curved link paths
       link.each(function(d) {
-        const line = d3.select(this);
-        const x1 = d.source.x;
-        const y1 = d.source.y;
-        const x2 = d.target.x;
-        const y2 = d.target.y;
-
-        line.attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2);
+        const pathElem = d3.select(this);
+        const pathData = calculateCurvedPath(d.source, d.target, graphData.nodes);
+        pathElem.attr('d', pathData);
 
         // Animate new links drawing in
         if (this._animateIn && !animatedLinksRef.current.has(d.id)) {
           animatedLinksRef.current.add(d.id);
-          const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-          line
+          const pathNode = this;
+          const length = pathNode.getTotalLength ? pathNode.getTotalLength() : 200;
+          pathElem
             .attr('stroke-dasharray', length)
             .attr('stroke-dashoffset', length)
             .transition()
@@ -1248,17 +1327,14 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
             .ease(d3.easeCubicInOut)
             .attr('stroke-dashoffset', 0)
             .on('end', () => {
-              line.attr('stroke-dasharray', null);
+              pathElem.attr('stroke-dasharray', null);
               this._animateIn = false;
             });
         }
       });
 
-      linkHitArea
-        .attr('x1', d => d.source.x)
-        .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
-        .attr('y2', d => d.target.y);
+      // Update hit area paths to match curved links
+      linkHitArea.attr('d', d => calculateCurvedPath(d.source, d.target, graphData.nodes));
 
       // Update node positions (scale is handled separately by inner group)
       node.attr('transform', d => `translate(${d.x},${d.y})`);
