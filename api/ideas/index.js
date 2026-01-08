@@ -14,17 +14,38 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
+      const userId = req.query.userId;
       const result = await db.execute(`
         SELECT
           i.*,
           p.first_name as sender_first_name,
           p.last_name as sender_last_name,
-          p.avatar as sender_avatar
+          p.avatar as sender_avatar,
+          COALESCE(SUM(CASE WHEN v.vote = 1 THEN 1 ELSE 0 END), 0) as upvotes,
+          COALESCE(SUM(CASE WHEN v.vote = -1 THEN 1 ELSE 0 END), 0) as downvotes
         FROM ideas i
         JOIN people p ON i.sender_id = p.id
+        LEFT JOIN idea_votes v ON i.id = v.idea_id
+        GROUP BY i.id
         ORDER BY i.created_at ASC
       `);
-      return res.json(result.rows);
+
+      let ideas = result.rows;
+
+      // If userId provided, get user's votes
+      if (userId) {
+        const userVotes = await db.execute({
+          sql: 'SELECT idea_id, vote FROM idea_votes WHERE user_id = ?',
+          args: [userId]
+        });
+        const voteMap = Object.fromEntries(userVotes.rows.map(v => [v.idea_id, v.vote]));
+        ideas = ideas.map(idea => ({
+          ...idea,
+          userVote: voteMap[idea.id] || 0
+        }));
+      }
+
+      return res.json(ideas);
     }
 
     if (req.method === 'POST') {

@@ -13,10 +13,10 @@ function IdeasPanel({ currentUser, onClose }) {
   const messagesEndRef = useRef(null);
   const cooldownIntervalRef = useRef(null);
 
-  // Fetch all ideas
+  // Fetch all ideas with user's votes
   const fetchIdeas = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/ideas`);
+      const res = await fetch(`${API_BASE}/ideas?userId=${currentUser.id}`);
       if (!res.ok) throw new Error('Failed to fetch ideas');
       const data = await res.json();
       setIdeas(data);
@@ -25,7 +25,7 @@ function IdeasPanel({ currentUser, onClose }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUser.id]);
 
   // Check cooldown status
   const checkCooldown = useCallback(async () => {
@@ -121,7 +121,7 @@ function IdeasPanel({ currentUser, onClose }) {
         throw new Error(data.error);
       }
 
-      setIdeas(prev => [...prev, data]);
+      setIdeas(prev => [...prev, { ...data, upvotes: 0, downvotes: 0, userVote: 0 }]);
       setNewIdea('');
       setCooldown({ canSend: false, remainingMs: 30 * 60 * 1000 });
     } catch (err) {
@@ -129,6 +129,57 @@ function IdeasPanel({ currentUser, onClose }) {
       setTimeout(() => setError(null), 3000);
     } finally {
       setSending(false);
+    }
+  };
+
+  // Handle vote
+  const handleVote = async (ideaId, voteType) => {
+    const idea = ideas.find(i => i.id === ideaId);
+    if (!idea) return;
+
+    // If clicking same vote type, remove vote (toggle off)
+    const newVote = idea.userVote === voteType ? 0 : voteType;
+
+    // Optimistic update
+    setIdeas(prev => prev.map(i => {
+      if (i.id !== ideaId) return i;
+      let upvotes = i.upvotes;
+      let downvotes = i.downvotes;
+
+      // Remove old vote
+      if (i.userVote === 1) upvotes--;
+      if (i.userVote === -1) downvotes--;
+
+      // Add new vote
+      if (newVote === 1) upvotes++;
+      if (newVote === -1) downvotes++;
+
+      return { ...i, userVote: newVote, upvotes, downvotes };
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/ideas/${ideaId}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id, vote: newVote })
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to vote');
+      }
+
+      const data = await res.json();
+      // Update with server response
+      setIdeas(prev => prev.map(i =>
+        i.id === ideaId
+          ? { ...i, upvotes: data.upvotes, downvotes: data.downvotes, userVote: data.userVote }
+          : i
+      ));
+    } catch (err) {
+      // Revert on error
+      fetchIdeas();
+      setError('Failed to vote');
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -171,6 +222,28 @@ function IdeasPanel({ currentUser, onClose }) {
                   <span className="idea-time">{formatTime(idea.created_at)}</span>
                 </div>
                 <p className="idea-text">{idea.content}</p>
+                <div className="idea-votes">
+                  <button
+                    className={`vote-btn upvote ${idea.userVote === 1 ? 'active' : ''}`}
+                    onClick={() => handleVote(idea.id, 1)}
+                    title="Upvote"
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <path d="M12 4l-8 8h5v8h6v-8h5z"/>
+                    </svg>
+                    {!!idea.upvotes && <span>{idea.upvotes}</span>}
+                  </button>
+                  <button
+                    className={`vote-btn downvote ${idea.userVote === -1 ? 'active' : ''}`}
+                    onClick={() => handleVote(idea.id, -1)}
+                    title="Downvote"
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <path d="M12 20l8-8h-5v-8h-6v8h-5z"/>
+                    </svg>
+                    {!!idea.downvotes && <span>{idea.downvotes}</span>}
+                  </button>
+                </div>
               </div>
             </div>
           ))

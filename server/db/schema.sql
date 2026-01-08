@@ -41,3 +41,17 @@ CREATE TABLE IF NOT EXISTS ideas (
 
 CREATE INDEX IF NOT EXISTS idx_ideas_sender ON ideas(sender_id);
 CREATE INDEX IF NOT EXISTS idx_ideas_created ON ideas(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS idea_votes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  idea_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  vote INTEGER NOT NULL, -- 1 for upvote, -1 for downvote
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (idea_id) REFERENCES ideas(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES people(id) ON DELETE CASCADE,
+  UNIQUE(idea_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_idea_votes_idea ON idea_votes(idea_id);
+CREATE INDEX IF NOT EXISTS idx_idea_votes_user ON idea_votes(user_id);
