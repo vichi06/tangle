@@ -80,7 +80,7 @@ function Tooltip({ data, position, onClose }) {
         <span>{data.person2}</span>
       </p>
       {data.intensity && (
-        <p className="tooltip-intensity">
+        <p className="tooltip-intensity" style={{ color: INTENSITY_COLORS[data.intensity] || INTENSITY_COLORS.kiss }}>
           {INTENSITY_LABELS[data.intensity] || data.intensity}
         </p>
       )}

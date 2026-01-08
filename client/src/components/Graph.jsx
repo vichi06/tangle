@@ -817,10 +817,14 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     // Link events
     const handleLinkInteraction = (event, d, isEnter) => {
       if (isEnter) {
-        link.filter(l => l.id === d.id).classed('highlighted', true);
+        link.filter(l => l.id === d.id)
+          .classed('highlighted', true)
+          .style('stroke', intensityColors[d.intensity] || intensityColors.kiss);
         showLinkTooltip(event, d);
       } else {
-        link.filter(l => l.id === d.id).classed('highlighted', false);
+        link.filter(l => l.id === d.id)
+          .classed('highlighted', false)
+          .style('stroke', null);
         onHideTooltip();
       }
     };
