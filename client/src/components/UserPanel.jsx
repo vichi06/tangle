@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import AvatarUpload from './AvatarUpload';
 import ConfirmModal from './ConfirmModal';
+import ProfileEdit from './ProfileEdit';
 import './UserPanel.css';
 
 const API_BASE = '/api';
@@ -29,6 +30,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
 
   // The user whose relationships we're managing (admin can change this)
   const managedUser = useMemo(() => {
@@ -252,6 +254,13 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
               </option>
             ))}
           </select>
+          <button
+            className="admin-edit-profile-btn"
+            onClick={() => setShowProfileEdit(true)}
+            title="Edit this user's profile"
+          >
+            Edit Profile
+          </button>
         </div>
       )}
 
@@ -521,6 +530,17 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
           message="Delete this relation?"
           onConfirm={() => deleteRelationship(confirmDelete)}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {showProfileEdit && (
+        <ProfileEdit
+          user={managedUser}
+          onUpdate={() => {
+            onDataChange();
+            setShowProfileEdit(false);
+          }}
+          onClose={() => setShowProfileEdit(false)}
         />
       )}
     </div>
