@@ -30,6 +30,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmDeleteProfile, setConfirmDeleteProfile] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
 
   // The user whose relationships we're managing (admin can change this)
@@ -213,6 +214,25 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
     }
   };
 
+  const deleteProfile = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/people/${managedUser.id}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Failed to delete profile');
+      // Reset to current user if we deleted someone else
+      setManagedUserId(currentUser.id);
+      setConfirmDeleteProfile(false);
+      onDataChange();
+      showMessage(`${managedUser.first_name}'s profile deleted`);
+    } catch (err) {
+      showMessage(err.message, true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const isPendingUser = !!currentUser.is_pending;
 
   const IntensityRadios = ({ value, onChange }) => (
@@ -263,6 +283,15 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
           >
             Edit Profile
           </button>
+          {managedUser.id !== currentUser.id && (
+            <button
+              className="admin-delete-profile-btn"
+              onClick={() => setConfirmDeleteProfile(true)}
+              title="Delete this user's profile"
+            >
+              Delete Profile
+            </button>
+          )}
         </div>
       )}
 
@@ -532,6 +561,14 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
           message="Delete this relation?"
           onConfirm={() => deleteRelationship(confirmDelete)}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {confirmDeleteProfile && (
+        <ConfirmModal
+          message={`Delete ${managedUser.first_name} ${managedUser.last_name}'s profile? This will remove them and all their connections.`}
+          onConfirm={deleteProfile}
+          onCancel={() => setConfirmDeleteProfile(false)}
         />
       )}
 
