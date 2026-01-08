@@ -37,8 +37,9 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
     return people.find(p => p.id === managedUserId) || currentUser;
   }, [people, managedUserId, currentUser]);
 
-  // Get managed user's relationships
+  // Get managed user's relationships (sorted by intensity: kiss < cuddle < couple)
   const myRelationships = useMemo(() => {
+    const intensityOrder = { kiss: 0, cuddle: 1, couple: 2, hidden: 3 };
     return relationships.filter(
       rel => rel.person1_id === managedUser.id || rel.person2_id === managedUser.id
     ).map(rel => {
@@ -50,7 +51,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
         partnerLastName: isFirst ? rel.person2_last_name : rel.person1_last_name,
         partnerAvatar: isFirst ? rel.person2_avatar : rel.person1_avatar
       };
-    });
+    }).sort((a, b) => (intensityOrder[a.intensity] ?? 0) - (intensityOrder[b.intensity] ?? 0));
   }, [relationships, managedUser.id]);
 
   // People not yet connected to managed user
