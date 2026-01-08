@@ -70,6 +70,39 @@ router.get('/cooldown/:userId', (req, res) => {
   }
 });
 
+// Get count of new ideas since a timestamp (for notification badge)
+// Excludes ideas created by the requesting user
+router.get('/new-count/:userId', (req, res) => {
+  const { userId } = req.params;
+  const { since } = req.query;
+
+  try {
+    let query;
+    let params;
+
+    if (since) {
+      // Count ideas created after the given timestamp, excluding user's own ideas
+      query = `
+        SELECT COUNT(*) as count FROM ideas
+        WHERE created_at > ? AND sender_id != ?
+      `;
+      params = [since, userId];
+    } else {
+      // If no timestamp provided, return total count excluding user's own ideas
+      query = `
+        SELECT COUNT(*) as count FROM ideas
+        WHERE sender_id != ?
+      `;
+      params = [userId];
+    }
+
+    const result = db.prepare(query).get(...params);
+    res.json({ count: result.count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Submit new idea
 router.post('/', (req, res) => {
   const { sender_id, content } = req.body;

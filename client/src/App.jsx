@@ -10,6 +10,7 @@ import './App.css';
 const API_BASE = '/api';
 const USER_COOKIE_NAME = 'tangle_user_id';
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
+const IDEAS_LAST_SEEN_KEY = 'tangle_ideas_last_seen'; // localStorage key prefix
 
 // Cookie helpers
 const getCookie = (name) => {
@@ -32,6 +33,7 @@ function App() {
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [tooltip, setTooltip] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [newIdeasCount, setNewIdeasCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     try {
@@ -103,6 +105,55 @@ function App() {
     fetchData();
   };
 
+  // Get the localStorage key for the current user's last seen ideas timestamp
+  const getIdeasLastSeenKey = useCallback(() => {
+    return currentUser ? `${IDEAS_LAST_SEEN_KEY}_${currentUser.id}` : null;
+  }, [currentUser]);
+
+  // Fetch count of new ideas since user's last visit
+  const fetchNewIdeasCount = useCallback(async () => {
+    if (!currentUser) return;
+    
+    const key = getIdeasLastSeenKey();
+    const lastSeen = localStorage.getItem(key);
+    
+    try {
+      const url = lastSeen 
+        ? `${API_BASE}/ideas/new-count/${currentUser.id}?since=${encodeURIComponent(lastSeen)}`
+        : `${API_BASE}/ideas/new-count/${currentUser.id}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setNewIdeasCount(data.count);
+      }
+    } catch (err) {
+      console.error('Failed to fetch new ideas count:', err);
+    }
+  }, [currentUser, getIdeasLastSeenKey]);
+
+  // Fetch new ideas count when user is set and periodically
+  useEffect(() => {
+    if (currentUser) {
+      fetchNewIdeasCount();
+      const interval = setInterval(fetchNewIdeasCount, 30000); // Check every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [currentUser, fetchNewIdeasCount]);
+
+  // Handle opening Ideas panel - mark as seen
+  const handleOpenIdeasPanel = () => {
+    if (!showIdeasPanel) {
+      // Opening the panel - update last seen timestamp
+      const key = getIdeasLastSeenKey();
+      if (key) {
+        const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        localStorage.setItem(key, now);
+        setNewIdeasCount(0);
+      }
+    }
+    setShowIdeasPanel(!showIdeasPanel);
+  };
+
   if (loading || !userChecked) {
     return (
       <div className="loading">
@@ -146,9 +197,12 @@ function App() {
         <div className="top-bar-left">
           <button
             className="panel-toggle ideas-toggle"
-            onClick={() => setShowIdeasPanel(!showIdeasPanel)}
+            onClick={handleOpenIdeasPanel}
           >
             {showIdeasPanel ? 'Close' : 'Ideas'}
+            {!showIdeasPanel && newIdeasCount > 0 && (
+              <span className="notification-badge">{newIdeasCount > 9 ? '9+' : newIdeasCount}</span>
+            )}
           </button>
           <div className="current-user" onClick={() => setShowProfileEdit(true)}>
             {currentUser.avatar ? (
