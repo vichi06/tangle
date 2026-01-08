@@ -635,6 +635,14 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     // Intensity stroke widths
     const intensityStroke = { kiss: 1, cuddle: 1.5, couple: 2, hidden: 1 };
 
+    // Intensity highlight colors (for hover)
+    const intensityColors = {
+      kiss: '#ff6b6b',      // Red
+      cuddle: '#ffaa55',    // Orange  
+      couple: '#ff99cc',    // Pink
+      hidden: '#888888'     // Gray
+    };
+
     // Detect touch device
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
@@ -1144,15 +1152,19 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
           if (l.source.id === d.id || l.target.id === d.id) {
             linkEl.classed('connected', true).classed('dimmed', false);
             linkEl.attr('data-distance', '0');
+            // Apply intensity-specific color
+            linkEl.style('stroke', intensityColors[l.intensity] || intensityColors.kiss);
           } else {
             linkEl.classed('connected', false).classed('dimmed', true);
             linkEl.attr('data-distance', Math.min(minDist, 5));
+            linkEl.style('stroke', null); // Reset to CSS default
           }
         });
       } else {
         // Reset all
         node.classed('highlighted', false).attr('data-distance', null);
         link.classed('connected dimmed', false).attr('data-distance', null);
+        link.style('stroke', null); // Reset stroke colors
       }
     };
 

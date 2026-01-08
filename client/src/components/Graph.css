@@ -252,7 +252,7 @@
 
 .link.highlighted,
 .link.connected {
-  stroke: var(--edge-hover) !important;
+  stroke-width: 2.5px !important;
 }
 
 .link.dimmed {
