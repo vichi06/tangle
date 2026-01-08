@@ -301,8 +301,7 @@
 
 /* Pending node styling - blurred with dashed border */
 .node.pending .node-scale-group {
-  filter: blur(2px);
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 .node.pending .node-border {
@@ -311,7 +310,7 @@
 }
 
 .node.pending image {
-  filter: grayscale(60%) blur(1px);
+  filter: grayscale(40%);
 }
 
 /* Pending links - dashed lines */

@@ -911,13 +911,10 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       }
     });
 
-    // Icon paths for different relationship types
-    // Heart for couple
-    const heartPath = 'M0,-3 C-1.5,-5 -5,-5 -5,-2 C-5,1 0,5 0,5 C0,5 5,1 5,-2 C5,-5 1.5,-5 0,-3 Z';
-    // Lipstick kiss mark for kiss
-    const kissPath = 'M-4,0 C-4,-2 -2,-3 0,-1 C2,-3 4,-2 4,0 C4,2 2,4 0,3 C-2,4 -4,2 -4,0 Z';
-    // Peach emoji for cuddle
-    const peachPath = 'M0,-4 C-1,-4 -1,-3 -1,-2 C-4,-2 -5,1 -4,3 C-3,5 -1,5 0,4 C1,5 3,5 4,3 C5,1 4,-2 1,-2 C1,-3 1,-4 0,-4 Z';
+    // Emoji sets for different relationship types
+    const coupleEmojis = ['💕', '💗', '💖', '💘', '❤️', '✨'];
+    const kissEmojis = ['💋', '😘', '💕', '✨', '💗', '💜'];
+    const cuddleEmojis = ['🫂', '💛', '🧡', '✨', '💕', '🤗'];
 
     // Function to get relationship intensity for a node
     const getNodeRelationshipIntensity = (nodeId) => {
@@ -964,52 +961,71 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         // Get relationship type for this node
         const intensity = getNodeRelationshipIntensity(d.id);
 
-        // Choose icon based on relationship type
-        let iconPath, iconColor;
+        // Choose emoji set based on relationship type
+        let emojiSet;
         if (intensity === 'couple') {
-          iconPath = heartPath;
-          iconColor = '#ff6b9d';
+          emojiSet = coupleEmojis;
         } else if (intensity === 'cuddle') {
-          iconPath = peachPath;
-          iconColor = '#ffab6b';
+          emojiSet = cuddleEmojis;
         } else {
-          iconPath = kissPath;
-          iconColor = '#ff6b9d';
+          emojiSet = kissEmojis;
         }
 
-        // Create burst effect
+        // Create burst effect with emojis
         const effectGroup = nodeG.append('g').attr('class', 'burst-effect');
-        const numIcons = 6;
-        const startRadius = d.size / 2 + 5;
+        const numEmojis = 8;
+        const startRadius = d.size / 2 + 8;
 
-        for (let i = 0; i < numIcons; i++) {
-          const angle = (2 * Math.PI * i) / numIcons - Math.PI / 2;
+        for (let i = 0; i < numEmojis; i++) {
+          // Add randomness to angle for organic feel
+          const baseAngle = (2 * Math.PI * i) / numEmojis - Math.PI / 2;
+          const angleVariation = (Math.random() - 0.5) * 0.3;
+          const angle = baseAngle + angleVariation;
+
+          // Randomize distance for more natural spread
+          const distanceMultiplier = 0.8 + Math.random() * 0.4;
           const startX = Math.cos(angle) * startRadius;
           const startY = Math.sin(angle) * startRadius;
-          const endX = Math.cos(angle) * (startRadius + d.size * 0.6);
-          const endY = Math.sin(angle) * (startRadius + d.size * 0.6) - 10;
-          const delay = i * 50;
+          const endX = Math.cos(angle) * (startRadius + d.size * 0.8 * distanceMultiplier);
+          const endY = Math.sin(angle) * (startRadius + d.size * 0.8 * distanceMultiplier) - 15;
 
-          effectGroup.append('path')
-            .attr('d', iconPath)
-            .attr('transform', `translate(${startX},${startY}) scale(0)`)
-            .attr('fill', iconColor)
+          // Staggered timing with randomness
+          const delay = i * 40 + Math.random() * 30;
+
+          // Random rotation for each emoji
+          const startRotation = Math.random() * 30 - 15;
+          const endRotation = startRotation + (Math.random() - 0.5) * 60;
+
+          // Pick random emoji from set
+          const emoji = emojiSet[Math.floor(Math.random() * emojiSet.length)];
+
+          // Dynamic font size based on node size
+          const fontSize = d.size * 0.25 + Math.random() * 4;
+
+          effectGroup.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'central')
+            .attr('font-size', 0)
+            .attr('transform', `translate(${startX},${startY}) rotate(${startRotation})`)
             .attr('opacity', 0)
+            .text(emoji)
+            .style('filter', 'drop-shadow(0 2px 3px rgba(0,0,0,0.3))')
             .transition()
             .delay(delay)
-            .duration(400)
-            .ease(d3.easeBackOut.overshoot(2))
-            .attr('transform', `translate(${startX},${startY}) scale(1.2)`)
+            .duration(350)
+            .ease(d3.easeBackOut.overshoot(2.5))
+            .attr('font-size', fontSize)
             .attr('opacity', 1)
             .transition()
-            .duration(600)
+            .duration(700)
             .ease(d3.easeCubicOut)
-            .attr('transform', `translate(${endX},${endY}) scale(0.8)`)
+            .attr('transform', `translate(${endX},${endY}) rotate(${endRotation})`)
+            .attr('font-size', fontSize * 0.6)
             .attr('opacity', 0)
             .remove();
         }
 
-        setTimeout(() => effectGroup.remove(), 1200);
+        setTimeout(() => effectGroup.remove(), 1500);
       });
 
     // Merge for updates
