@@ -8,6 +8,13 @@ const INTENSITY_LABELS = {
   hidden: 'Hidden'
 };
 
+const INTENSITY_COLORS = {
+  kiss: '#ff6b6b',      // Red for kissing
+  cuddle: '#ffaa55',    // Orange for cuddle
+  couple: '#ff99cc',    // Pink for couple
+  hidden: '#888888'     // Gray for hidden
+};
+
 function Tooltip({ data, position, onClose }) {
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
@@ -47,9 +54,22 @@ function Tooltip({ data, position, onClose }) {
         {data.bio && (
           <p className="tooltip-bio">{data.bio}</p>
         )}
-        <p className="tooltip-connections">
-          {data.connections} connections
-        </p>
+        {data.relations && data.relations.length > 0 ? (
+          <div className="tooltip-relations">
+            <p className="tooltip-relations-title">Relations ({data.relations.length}):</p>
+            <ul className="tooltip-relations-list">
+              {data.relations.map((rel, idx) => (
+                <li key={idx} style={{ color: INTENSITY_COLORS[rel.intensity] || INTENSITY_COLORS.kiss }}>
+                  {rel.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="tooltip-connections">
+            {data.connections} connections
+          </p>
+        )}
       </div>
     </div>
   ) : (

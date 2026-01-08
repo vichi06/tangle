@@ -640,13 +640,36 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
 
     // Helper to show node tooltip
     const showNodeTooltip = (event, d) => {
+      // Intensity sort order: kiss < cuddle < couple
+      const intensityOrder = { kiss: 0, cuddle: 1, couple: 2, hidden: -1 };
+
+      // Get all relationships for this node with partner info
+      const nodeRelations = graphData.links
+        .filter(l => {
+          const srcId = l.source.id ?? l.source;
+          const tgtId = l.target.id ?? l.target;
+          return srcId === d.id || tgtId === d.id;
+        })
+        .map(l => {
+          const srcId = l.source.id ?? l.source;
+          const tgtId = l.target.id ?? l.target;
+          const partnerId = srcId === d.id ? tgtId : srcId;
+          const partner = graphData.nodes.find(n => n.id === partnerId);
+          return {
+            name: partner ? `${partner.firstName} ${partner.lastName}` : 'Unknown',
+            intensity: l.intensity
+          };
+        })
+        .sort((a, b) => (intensityOrder[a.intensity] ?? 0) - (intensityOrder[b.intensity] ?? 0));
+
       onShowTooltip({
         type: 'node',
         firstName: d.firstName,
         lastName: d.lastName,
         avatar: d.avatar,
         bio: d.bio,
-        connections: d.degree
+        connections: d.degree,
+        relations: nodeRelations
       }, { x: event.clientX ?? event.touches?.[0]?.clientX, y: event.clientY ?? event.touches?.[0]?.clientY });
     };
 
