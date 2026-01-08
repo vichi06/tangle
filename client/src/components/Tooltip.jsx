@@ -59,7 +59,11 @@ function Tooltip({ data, position, onClose }) {
             <p className="tooltip-relations-title">Relations ({data.relations.length}):</p>
             <ul className="tooltip-relations-list">
               {data.relations.map((rel, idx) => (
-                <li key={idx} style={{ color: INTENSITY_COLORS[rel.intensity] || INTENSITY_COLORS.kiss }}>
+                <li key={idx}>
+                  <span 
+                    className="tooltip-intensity-dot" 
+                    style={{ backgroundColor: INTENSITY_COLORS[rel.intensity] || INTENSITY_COLORS.kiss }}
+                  />
                   {rel.name}
                 </li>
               ))}
