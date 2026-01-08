@@ -81,6 +81,22 @@
   background: var(--accent-hover);
 }
 
+.admin-delete-profile-btn {
+  padding: 8px 12px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid #f44336;
+  color: #f44336;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-delete-profile-btn:hover {
+  background: #f44336;
+  color: white;
+}
+
 .panel-message {
   padding: 12px 20px;
   font-size: 13px;
