@@ -23,16 +23,17 @@ const EDGE_NODE_REPULSION = 50;
 const DEFAULT_SETTINGS = {
   repulsion: 12500,     // 1/r² repulsion strength
   linkDistance: 30,     // Target distance for connected nodes
-  attraction: 10,       // 1/r attraction strength (clustering)
   showCivBadge: true,   // Show CIV badge on nodes
   nodeSizeMode: 'both', // 'connections', 'betweenness', or 'both'
 };
 
+// Fixed attraction value (not configurable)
+const ATTRACTION_STRENGTH = 10;
+
 // Slider ranges for percentage calculation
 const SLIDER_RANGES = {
-  repulsion: { min: 1000, max: 30000 },      // max x2
+  repulsion: { min: 1000, max: 60000 },      // max x2 (doubled)
   linkDistance: { min: 15, max: 66 },         // min /2, max /3
-  attraction: { min: 3, max: 75 },            // min /3, max /2
 };
 
 const toPercent = (value, key) => {
@@ -461,7 +462,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
 
     const tempSim = d3.forceSimulation(nodes)
       .force('link', d3.forceLink(links).id(d => d.id).distance(50).strength(LINK_STRENGTH))
-      .force('physics', forceCustomPhysics(DEFAULT_SETTINGS.repulsion, DEFAULT_SETTINGS.attraction))
+      .force('physics', forceCustomPhysics(DEFAULT_SETTINGS.repulsion, ATTRACTION_STRENGTH))
       .force('x', d3.forceX(width / 2).strength(CENTER_GRAVITY))
       .force('y', d3.forceY(height / 2).strength(CENTER_GRAVITY))
       .force('collision', d3.forceCollide().radius(d => d.size / 2 + COLLISION_PADDING).strength(1))
@@ -607,7 +608,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     }
 
     simulationRef.current
-      .force('physics', forceCustomPhysics(settings.repulsion, settings.attraction))
+      .force('physics', forceCustomPhysics(settings.repulsion, ATTRACTION_STRENGTH))
       .alpha(0.3)
       .restart();
   }, [settings]);
@@ -1182,7 +1183,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
           .id(d => d.id)
           .distance(d => currentSettings.linkDistance + ((d.source.size || MIN_NODE_SIZE) + (d.target.size || MIN_NODE_SIZE)) / 4)
           .strength(LINK_STRENGTH))
-        .force('physics', forceCustomPhysics(currentSettings.repulsion, currentSettings.attraction))
+        .force('physics', forceCustomPhysics(currentSettings.repulsion, ATTRACTION_STRENGTH))
         .force('x', d3.forceX(width / 2).strength(CENTER_GRAVITY))
         .force('y', d3.forceY(height / 2).strength(CENTER_GRAVITY))
         .force('collision', d3.forceCollide()
@@ -1338,25 +1339,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
                 onMouseDown={() => setDragging('linkDistance')}
                 onMouseUp={() => setDragging(null)}
                 onTouchStart={() => setDragging('linkDistance')}
-                onTouchEnd={() => setDragging(null)}
-              />
-
-              <label className="settings-label">
-                <span>Clustering</span>
-                {dragging === 'attraction' && (
-                  <span className="settings-value">{toPercent(settings.attraction, 'attraction')}%</span>
-                )}
-              </label>
-              <input
-                type="range"
-                min={SLIDER_RANGES.attraction.min}
-                max={SLIDER_RANGES.attraction.max}
-                step="5"
-                value={settings.attraction}
-                onChange={e => updateSetting('attraction', e.target.value)}
-                onMouseDown={() => setDragging('attraction')}
-                onMouseUp={() => setDragging(null)}
-                onTouchStart={() => setDragging('attraction')}
                 onTouchEnd={() => setDragging(null)}
               />
 
