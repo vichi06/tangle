@@ -872,13 +872,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       // Animate scale during reveal or when new node is added
       const shouldAnimate = isRevealMode || d._isAnimatingIn;
 
-      // Backing circle (stays opaque when node fades, prevents edges showing through)
-      nodeG.append('circle')
-        .attr('class', 'node-backing')
-        .attr('r', d.size / 2 * 1.02)
-        .attr('fill', '#0a0a0a')
-        .attr('transform', shouldAnimate ? 'scale(0)' : 'scale(1)');
-
       // Inner group for scale animation (starts at scale 0 if animating)
       const scaleGroup = nodeG.append('g')
         .attr('class', 'node-scale-group')
@@ -965,13 +958,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     };
 
 
-    // Animate backing circle scaling in
-    nodeEnter.filter(d => d._shouldAnimate).select('.node-backing')
-      .transition()
-      .duration(800)
-      .ease(d3.easeElasticOut.amplitude(1).period(0.5))
-      .attr('transform', 'scale(1)');
-
     // Animate nodes scaling in with bounce and icon burst effect
     nodeEnter.filter(d => d._shouldAnimate).select('.node-scale-group')
       .transition()
@@ -1034,12 +1020,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     nodeSelection.each(function(d) {
       const nodeG = d3.select(this);
       const scaleGroup = nodeG.select('.node-scale-group');
-
-      // Animate backing circle
-      nodeG.select('.node-backing')
-        .transition()
-        .duration(500)
-        .attr('r', d.size / 2 * 1.02);
 
       // Animate circle sizes
       scaleGroup.select('clipPath circle')
