@@ -843,7 +843,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       // Backing circle (stays opaque when node fades, prevents edges showing through)
       nodeG.append('circle')
         .attr('class', 'node-backing')
-        .attr('r', d.size / 2 + 2)
+        .attr('r', d.size / 2 * 1.02)
         .attr('fill', '#0a0a0a')
         .attr('transform', shouldAnimate ? 'scale(0)' : 'scale(1)');
 
@@ -1037,7 +1037,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       nodeG.select('.node-backing')
         .transition()
         .duration(500)
-        .attr('r', d.size / 2 + 2);
+        .attr('r', d.size / 2 * 1.02);
 
       // Animate circle sizes
       scaleGroup.select('clipPath circle')
