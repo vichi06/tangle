@@ -6,19 +6,36 @@ const router = express.Router();
 const COOLDOWN_MINUTES = 30;
 const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
 
-// Get all ideas with sender info
+// Get all ideas with sender info and vote counts
 router.get('/', (req, res) => {
+  const userId = req.query.userId;
   try {
     const ideas = db.prepare(`
       SELECT
         i.*,
         p.first_name as sender_first_name,
         p.last_name as sender_last_name,
-        p.avatar as sender_avatar
+        p.avatar as sender_avatar,
+        COALESCE(SUM(CASE WHEN v.vote = 1 THEN 1 ELSE 0 END), 0) as upvotes,
+        COALESCE(SUM(CASE WHEN v.vote = -1 THEN 1 ELSE 0 END), 0) as downvotes
       FROM ideas i
       JOIN people p ON i.sender_id = p.id
+      LEFT JOIN idea_votes v ON i.id = v.idea_id
+      GROUP BY i.id
       ORDER BY i.created_at ASC
     `).all();
+
+    // If userId provided, get user's votes
+    if (userId) {
+      const userVotes = db.prepare(`
+        SELECT idea_id, vote FROM idea_votes WHERE user_id = ?
+      `).all(userId);
+      const voteMap = Object.fromEntries(userVotes.map(v => [v.idea_id, v.vote]));
+      ideas.forEach(idea => {
+        idea.userVote = voteMap[idea.id] || 0;
+      });
+    }
+
     res.json(ideas);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -116,6 +133,64 @@ router.post('/', (req, res) => {
     `).get(result.lastInsertRowid);
 
     res.status(201).json(idea);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Vote on an idea
+router.post('/:ideaId/vote', (req, res) => {
+  const { ideaId } = req.params;
+  const { user_id, vote } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
+  if (vote !== 1 && vote !== -1 && vote !== 0) {
+    return res.status(400).json({ error: 'Vote must be 1, -1, or 0' });
+  }
+
+  try {
+    // Verify idea exists
+    const idea = db.prepare('SELECT id FROM ideas WHERE id = ?').get(ideaId);
+    if (!idea) {
+      return res.status(404).json({ error: 'Idea not found' });
+    }
+
+    // Verify user exists
+    const user = db.prepare('SELECT id FROM people WHERE id = ?').get(user_id);
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    if (vote === 0) {
+      // Remove vote
+      db.prepare('DELETE FROM idea_votes WHERE idea_id = ? AND user_id = ?').run(ideaId, user_id);
+    } else {
+      // Upsert vote
+      db.prepare(`
+        INSERT INTO idea_votes (idea_id, user_id, vote)
+        VALUES (?, ?, ?)
+        ON CONFLICT(idea_id, user_id) DO UPDATE SET vote = excluded.vote
+      `).run(ideaId, user_id, vote);
+    }
+
+    // Return updated vote counts
+    const counts = db.prepare(`
+      SELECT
+        COALESCE(SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END), 0) as upvotes,
+        COALESCE(SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END), 0) as downvotes
+      FROM idea_votes
+      WHERE idea_id = ?
+    `).get(ideaId);
+
+    res.json({
+      idea_id: parseInt(ideaId),
+      upvotes: counts.upvotes,
+      downvotes: counts.downvotes,
+      userVote: vote
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
