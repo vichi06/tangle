@@ -971,61 +971,50 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
           emojiSet = kissEmojis;
         }
 
-        // Create burst effect with emojis
+        // Create burst effect with emojis (optimized for performance)
         const effectGroup = nodeG.append('g').attr('class', 'burst-effect');
-        const numEmojis = 8;
+        const numEmojis = 6;
         const startRadius = d.size / 2 + 8;
+        const fontSize = d.size * 0.28;
 
         for (let i = 0; i < numEmojis; i++) {
-          // Add randomness to angle for organic feel
+          // Pre-calculate angles with slight variation
           const baseAngle = (2 * Math.PI * i) / numEmojis - Math.PI / 2;
-          const angleVariation = (Math.random() - 0.5) * 0.3;
-          const angle = baseAngle + angleVariation;
+          const angle = baseAngle + (Math.random() - 0.5) * 0.3;
 
-          // Randomize distance for more natural spread
-          const distanceMultiplier = 0.8 + Math.random() * 0.4;
           const startX = Math.cos(angle) * startRadius;
           const startY = Math.sin(angle) * startRadius;
-          const endX = Math.cos(angle) * (startRadius + d.size * 0.8 * distanceMultiplier);
-          const endY = Math.sin(angle) * (startRadius + d.size * 0.8 * distanceMultiplier) - 15;
+          const endRadius = startRadius + d.size * 0.7;
+          const endX = Math.cos(angle) * endRadius;
+          const endY = Math.sin(angle) * endRadius - 12;
 
-          // Staggered timing with randomness
-          const delay = i * 40 + Math.random() * 30;
+          const delay = i * 50;
+          const rotation = (Math.random() - 0.5) * 40;
+          const emoji = emojiSet[i % emojiSet.length];
 
-          // Random rotation for each emoji
-          const startRotation = Math.random() * 30 - 15;
-          const endRotation = startRotation + (Math.random() - 0.5) * 60;
-
-          // Pick random emoji from set
-          const emoji = emojiSet[Math.floor(Math.random() * emojiSet.length)];
-
-          // Dynamic font size based on node size
-          const fontSize = d.size * 0.25 + Math.random() * 4;
-
+          // Use transform scale instead of font-size for GPU acceleration
           effectGroup.append('text')
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'central')
-            .attr('font-size', 0)
-            .attr('transform', `translate(${startX},${startY}) rotate(${startRotation})`)
+            .attr('font-size', fontSize)
+            .attr('transform', `translate(${startX},${startY}) scale(0) rotate(${rotation})`)
             .attr('opacity', 0)
             .text(emoji)
-            .style('filter', 'drop-shadow(0 2px 3px rgba(0,0,0,0.3))')
             .transition()
             .delay(delay)
-            .duration(350)
-            .ease(d3.easeBackOut.overshoot(2.5))
-            .attr('font-size', fontSize)
+            .duration(300)
+            .ease(d3.easeBackOut.overshoot(2))
+            .attr('transform', `translate(${startX},${startY}) scale(1) rotate(${rotation})`)
             .attr('opacity', 1)
             .transition()
-            .duration(700)
-            .ease(d3.easeCubicOut)
-            .attr('transform', `translate(${endX},${endY}) rotate(${endRotation})`)
-            .attr('font-size', fontSize * 0.6)
+            .duration(500)
+            .ease(d3.easeQuadOut)
+            .attr('transform', `translate(${endX},${endY}) scale(0.7) rotate(${rotation})`)
             .attr('opacity', 0)
             .remove();
         }
 
-        setTimeout(() => effectGroup.remove(), 1500);
+        setTimeout(() => effectGroup.remove(), 1000);
       });
 
     // Merge for updates
