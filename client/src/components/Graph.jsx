@@ -911,10 +911,12 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       }
     });
 
-    // Emoji sets for different relationship types
-    const coupleEmojis = ['💕', '💗', '💖', '💘', '❤️', '✨'];
-    const kissEmojis = ['💋', '😘', '💕', '✨', '💗', '💜'];
-    const cuddleEmojis = ['🫂', '💛', '🧡', '✨', '💕', '🤗'];
+    // Icon configs for relationship types (single icon that grows and fades)
+    const relationshipIcons = {
+      couple: { emoji: '❤️', color: '#ffb6c1' },  // Light pink heart
+      cuddle: { emoji: '🍑', color: '#ffcc99' },  // Light orange peach
+      kiss: { emoji: '💋', color: '#ff6b6b' }     // Red lips
+    };
 
     // Function to get relationship intensity for a node
     const getNodeRelationshipIntensity = (nodeId) => {
@@ -961,60 +963,28 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         // Get relationship type for this node
         const intensity = getNodeRelationshipIntensity(d.id);
 
-        // Choose emoji set based on relationship type
-        let emojiSet;
-        if (intensity === 'couple') {
-          emojiSet = coupleEmojis;
-        } else if (intensity === 'cuddle') {
-          emojiSet = cuddleEmojis;
-        } else {
-          emojiSet = kissEmojis;
-        }
+        // Get icon config for this relationship type
+        const iconConfig = relationshipIcons[intensity] || relationshipIcons.kiss;
 
-        // Create burst effect with emojis (optimized for performance)
-        const effectGroup = nodeG.append('g').attr('class', 'burst-effect');
-        const numEmojis = 6;
-        const startRadius = d.size / 2 + 8;
-        const fontSize = d.size * 0.28;
+        // Create simple grow-and-fade effect with single icon behind the node
+        const effectGroup = nodeG.insert('g', ':first-child').attr('class', 'burst-effect');
+        const iconSize = d.size * 1.5;
 
-        for (let i = 0; i < numEmojis; i++) {
-          // Pre-calculate angles with slight variation
-          const baseAngle = (2 * Math.PI * i) / numEmojis - Math.PI / 2;
-          const angle = baseAngle + (Math.random() - 0.5) * 0.3;
-
-          const startX = Math.cos(angle) * startRadius;
-          const startY = Math.sin(angle) * startRadius;
-          const endRadius = startRadius + d.size * 0.7;
-          const endX = Math.cos(angle) * endRadius;
-          const endY = Math.sin(angle) * endRadius - 12;
-
-          const delay = i * 50;
-          const rotation = (Math.random() - 0.5) * 40;
-          const emoji = emojiSet[i % emojiSet.length];
-
-          // Use transform scale instead of font-size for GPU acceleration
-          effectGroup.append('text')
-            .attr('text-anchor', 'middle')
-            .attr('dominant-baseline', 'central')
-            .attr('font-size', fontSize)
-            .attr('transform', `translate(${startX},${startY}) scale(0) rotate(${rotation})`)
-            .attr('opacity', 0)
-            .text(emoji)
-            .transition()
-            .delay(delay)
-            .duration(300)
-            .ease(d3.easeBackOut.overshoot(2))
-            .attr('transform', `translate(${startX},${startY}) scale(1) rotate(${rotation})`)
-            .attr('opacity', 1)
-            .transition()
-            .duration(500)
-            .ease(d3.easeQuadOut)
-            .attr('transform', `translate(${endX},${endY}) scale(0.7) rotate(${rotation})`)
-            .attr('opacity', 0)
-            .remove();
-        }
-
-        setTimeout(() => effectGroup.remove(), 1000);
+        effectGroup.append('text')
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'central')
+          .attr('font-size', iconSize)
+          .attr('transform', 'scale(0)')
+          .attr('opacity', 0.8)
+          .text(iconConfig.emoji)
+          .transition()
+          .duration(600)
+          .ease(d3.easeQuadOut)
+          .attr('transform', 'scale(1.5)')
+          .attr('opacity', 0)
+          .on('end', function() {
+            effectGroup.remove();
+          });
       });
 
     // Merge for updates
