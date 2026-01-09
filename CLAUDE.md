@@ -38,10 +38,22 @@ File-based routing in `api/` folder:
 
 ### Graph Component
 `Graph.jsx` is the main visualization using D3.js:
-- Force simulation with collision, charge, and link forces
-- Nodes sized by connection count
-- Click to select, drag to reposition
-- Heart animation on new connections
+- Force simulation with custom 1/r² repulsion + 1/r attraction physics
+- **Curved edges**: Cubic Bezier curves that automatically curve away from nearby nodes
+- Nodes sized by connections, betweenness centrality, or both
+- Progressive reveal animation on page load (BFS from current user)
+- CIV badge on certified nodes (toggleable)
+
+### Edge Styling
+- Three intensity levels: kiss (red), cuddle (orange), couple (pink)
+- Hidden relationships shown as dashed lines
+- Edges curve smoothly to avoid overlapping nodes using `calculateCurvedPath()`
+
+### Settings Panel
+- Custom dot-based sliders with 6 discrete steps (draggable)
+- Repulsion and Edge Distance controls
+- CIV Badge toggle
+- Node size mode selector (connections/influence/both)
 
 ## Common Tasks
 
@@ -57,22 +69,45 @@ File-based routing in `api/` folder:
 
 ### Deploy
 ```bash
-git add . && git commit -m "feat/fix/chore: description"
-git push origin main
-vercel --prod
+# Development branch
+git add -A && git commit -m "feat/fix/chore: description"
+git push origin dev
+
+# Production (triggers Vercel auto-deploy)
+git checkout main && git merge dev && git push origin main
+git checkout dev
 ```
 
 ## Component Overview
 
 | Component | Purpose |
 |-----------|---------|
-| `App.jsx` | Main app, user state, cookie restoration |
-| `Graph.jsx` | D3 force-directed graph visualization |
-| `UserPanel.jsx` | Relationship CRUD, admin user selector |
+| `App.jsx` | Main app, user state, cookie restoration, notification badges |
+| `Graph.jsx` | D3 force-directed graph with curved edges, settings panel, reveal animation |
+| `UserPanel.jsx` | Relationship CRUD, admin user selector, profile deletion |
 | `WelcomeModal.jsx` | Profile selection with search and PIN input |
-| `IdeasPanel.jsx` | Feedback submission with cooldown |
-| `ProfileEdit.jsx` | Edit user profile details |
-| `Tooltip.jsx` | Hover info on graph nodes |
+| `IdeasPanel.jsx` | Feedback submission with cooldown, voting |
+| `ProfileEdit.jsx` | Edit user profile details (admin can edit any user) |
+| `Tooltip.jsx` | Hover info on graph nodes with colored intensity dots |
+| `ConfirmModal.jsx` | Confirmation dialogs for destructive actions |
+
+## Relationship Intensities
+
+| Intensity | Color | CSS Variable |
+|-----------|-------|--------------|
+| kiss | `#ff6b6b` (red) | `intensity-kiss` |
+| cuddle | `#ffaa55` (orange) | `intensity-cuddle` |
+| couple | `#ff99cc` (pink) | `intensity-couple` |
+| hidden | `#888888` (gray) | `intensity-hidden` |
+
+## Database Schema
+
+```sql
+people: id, first_name, last_name, bio, avatar, is_civ, is_admin, admin_code, is_pending
+relationships: id, person1_id, person2_id, intensity, date, context, is_pending
+ideas: id, user_id, text, created_at, status (pending/accepted/rejected)
+idea_votes: id, idea_id, user_id, value (-1 or 1)
+```
 
 ## Database Commands
 
