@@ -152,3 +152,23 @@
   left: 27px;
   background: #fff;
 }
+
+/* Delete profile button */
+.delete-profile-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 24px;
+  background: transparent;
+  border: 1px solid #f44336;
+  border-radius: 10px;
+  color: #f44336;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-profile-btn:hover {
+  background: #f44336;
+  color: white;
+}

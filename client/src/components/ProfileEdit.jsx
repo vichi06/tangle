@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import AvatarUpload from './AvatarUpload';
+import ConfirmModal from './ConfirmModal';
 import './ProfileEdit.css';
 
 const API_BASE = '/api';
 
-function ProfileEdit({ user, onUpdate, onClose }) {
+function ProfileEdit({ user, onUpdate, onClose, onDelete }) {
   const [profile, setProfile] = useState({
     first_name: user.first_name,
     last_name: user.last_name,
@@ -14,6 +15,7 @@ function ProfileEdit({ user, onUpdate, onClose }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSave = async () => {
     if (!profile.first_name.trim() || !profile.last_name.trim()) {
@@ -100,6 +102,26 @@ function ProfileEdit({ user, onUpdate, onClose }) {
             {loading ? 'Saving...' : 'Save'}
           </button>
         </div>
+
+        {onDelete && (
+          <button
+            className="delete-profile-btn"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            Delete Profile
+          </button>
+        )}
+
+        {showDeleteConfirm && (
+          <ConfirmModal
+            message={`Delete ${user.first_name} ${user.last_name}'s profile? This will remove them and all their connections.`}
+            onConfirm={() => {
+              setShowDeleteConfirm(false);
+              onDelete();
+            }}
+            onCancel={() => setShowDeleteConfirm(false)}
+          />
+        )}
       </div>
     </div>
   );

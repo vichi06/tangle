@@ -580,6 +580,10 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
             setShowProfileEdit(false);
           }}
           onClose={() => setShowProfileEdit(false)}
+          onDelete={managedUser.id !== currentUser.id ? async () => {
+            await deleteProfile();
+            setShowProfileEdit(false);
+          } : undefined}
         />
       )}
     </div>
