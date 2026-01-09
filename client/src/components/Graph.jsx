@@ -36,10 +36,87 @@ const SLIDER_RANGES = {
   linkDistance: { min: 15, max: 66 },         // min /2, max /3
 };
 
-const toPercent = (value, key) => {
+// Convert value to step index (0-5 for 6 steps)
+const valueToStep = (value, key) => {
   const { min, max } = SLIDER_RANGES[key];
-  return Math.round(((value - min) / (max - min)) * 100);
+  const normalized = (value - min) / (max - min);
+  return Math.round(normalized * 5);
 };
+
+// Convert step index back to value
+const stepToValue = (step, key) => {
+  const { min, max } = SLIDER_RANGES[key];
+  return min + (step / 5) * (max - min);
+};
+
+// Dot-based slider component with drag support
+function DotSlider({ value, settingKey, onChange }) {
+  const STEPS = 6;
+  const currentStep = valueToStep(value, settingKey);
+  const containerRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const getStepFromPosition = useCallback((clientX) => {
+    if (!containerRef.current) return currentStep;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const percent = Math.max(0, Math.min(1, x / rect.width));
+    return Math.round(percent * (STEPS - 1));
+  }, [currentStep]);
+
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+    const step = getStepFromPosition(e.clientX);
+    onChange(stepToValue(step, settingKey));
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e) => {
+      const step = getStepFromPosition(e.clientX);
+      const newValue = stepToValue(step, settingKey);
+      onChange(newValue);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, getStepFromPosition, onChange, settingKey]);
+
+  return (
+    <div 
+      className="dot-slider"
+      ref={containerRef}
+      onMouseDown={handleMouseDown}
+    >
+      <div className="dot-slider-track">
+        <div 
+          className="dot-slider-fill" 
+          style={{ width: `${(currentStep / (STEPS - 1)) * 100}%` }} 
+        />
+      </div>
+      <div className="dot-slider-dots">
+        {Array.from({ length: STEPS }, (_, i) => (
+          <div
+            key={i}
+            className={`dot-slider-dot ${i === currentStep ? 'active' : ''} ${i < currentStep ? 'passed' : ''}`}
+            aria-label={`Step ${i + 1} of ${STEPS}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // Custom force: 1/r² repulsion + 1/r attraction between all nodes
 function forceCustomPhysics(repulsionK, attractionK) {
@@ -410,7 +487,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
 
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
-  const [dragging, setDragging] = useState(null);
   const settingsRef = useRef(settings);
   const nodePositionsRef = useRef(new Map()); // Persist node positions across renders
   const linkIdsRef = useRef(new Set()); // Track existing link IDs
@@ -1401,40 +1477,20 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
 
               <label className="settings-label">
                 <span>Repulsion</span>
-                {dragging === 'repulsion' && (
-                  <span className="settings-value">{toPercent(settings.repulsion, 'repulsion')}%</span>
-                )}
               </label>
-              <input
-                type="range"
-                min={SLIDER_RANGES.repulsion.min}
-                max={SLIDER_RANGES.repulsion.max}
-                step="500"
+              <DotSlider
                 value={settings.repulsion}
-                onChange={e => updateSetting('repulsion', e.target.value)}
-                onMouseDown={() => setDragging('repulsion')}
-                onMouseUp={() => setDragging(null)}
-                onTouchStart={() => setDragging('repulsion')}
-                onTouchEnd={() => setDragging(null)}
+                settingKey="repulsion"
+                onChange={(val) => updateSetting('repulsion', val)}
               />
 
               <label className="settings-label">
                 <span>Edge Distance</span>
-                {dragging === 'linkDistance' && (
-                  <span className="settings-value">{toPercent(settings.linkDistance, 'linkDistance')}%</span>
-                )}
               </label>
-              <input
-                type="range"
-                min={SLIDER_RANGES.linkDistance.min}
-                max={SLIDER_RANGES.linkDistance.max}
-                step="10"
+              <DotSlider
                 value={settings.linkDistance}
-                onChange={e => updateSetting('linkDistance', e.target.value)}
-                onMouseDown={() => setDragging('linkDistance')}
-                onMouseUp={() => setDragging(null)}
-                onTouchStart={() => setDragging('linkDistance')}
-                onTouchEnd={() => setDragging(null)}
+                settingKey="linkDistance"
+                onChange={(val) => updateSetting('linkDistance', val)}
               />
 
               <div className="settings-toggle">
