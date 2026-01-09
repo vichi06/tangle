@@ -15,11 +15,17 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredPeople = people.filter(person => {
-    if (!searchQuery.trim()) return true;
-    const fullName = `${person.first_name} ${person.last_name}`.toLowerCase();
-    return fullName.includes(searchQuery.toLowerCase());
-  });
+  const filteredPeople = people
+    .filter(person => {
+      if (!searchQuery.trim()) return true;
+      const fullName = `${person.first_name} ${person.last_name}`.toLowerCase();
+      return fullName.includes(searchQuery.toLowerCase());
+    })
+    .sort((a, b) => {
+      const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+      const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
 
   const handleSelectPerson = (person) => {
     setPendingSelection(person);
