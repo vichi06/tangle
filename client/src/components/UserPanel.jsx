@@ -270,28 +270,36 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
               setMode('list');
             }}
           >
-            {people.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.first_name} {p.last_name} {p.id === currentUser.id ? '(You)' : ''}
-              </option>
-            ))}
+            {[...people]
+              .sort((a, b) => {
+                const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+                const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+                return nameA.localeCompare(nameB);
+              })
+              .map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.first_name} {p.last_name} {p.id === currentUser.id ? '(You)' : ''}
+                </option>
+              ))}
           </select>
-          <button
-            className="admin-edit-profile-btn"
-            onClick={() => setShowProfileEdit(true)}
-            title="Edit this user's profile"
-          >
-            Edit Profile
-          </button>
-          {managedUser.id !== currentUser.id && (
+          <div className="admin-buttons">
             <button
-              className="admin-delete-profile-btn"
-              onClick={() => setConfirmDeleteProfile(true)}
-              title="Delete this user's profile"
+              className="admin-edit-profile-btn"
+              onClick={() => setShowProfileEdit(true)}
+              title="Edit this user's profile"
             >
-              Delete Profile
+              Edit Profile
             </button>
-          )}
+            {managedUser.id !== currentUser.id && (
+              <button
+                className="admin-delete-profile-btn"
+                onClick={() => setConfirmDeleteProfile(true)}
+                title="Delete this user's profile"
+              >
+                Delete Profile
+              </button>
+            )}
+          </div>
         </div>
       )}
 
