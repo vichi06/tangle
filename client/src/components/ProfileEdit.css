@@ -95,62 +95,28 @@
   color: var(--text-muted);
 }
 
-/* CIV Toggle - Mobile friendly */
-.profile-form .civ-toggle-container {
+/* External checkbox */
+.profile-form .external-checkbox {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  background: var(--bg-tertiary);
-  border-radius: 10px;
-  margin: 4px 0;
-  border: none;
-  width: 100%;
+  gap: 8px;
+  padding: 4px 0;
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
-.profile-form .civ-toggle-label {
-  font-size: 15px;
-  color: var(--text-primary);
-  font-weight: 500;
-  pointer-events: none;
+.profile-form .external-checkbox:hover {
+  color: var(--text-secondary);
 }
 
-.profile-form .civ-toggle-track {
-  position: relative;
-  display: block;
-  width: 56px;
-  height: 32px;
-  background: var(--bg-primary);
-  border-radius: 16px;
-  border: 2px solid var(--border-color);
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  pointer-events: none;
-}
-
-.profile-form .civ-toggle-thumb {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 22px;
-  height: 22px;
-  background: var(--text-secondary);
-  border-radius: 50%;
-  transition: all 0.2s ease;
-  pointer-events: none;
-}
-
-.profile-form .civ-toggle-container.active .civ-toggle-track {
-  background: #3b82f6;
-  border-color: #3b82f6;
-}
-
-.profile-form .civ-toggle-container.active .civ-toggle-thumb {
-  left: 27px;
-  background: #fff;
+.profile-form .external-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  border: none;
+  accent-color: var(--text-muted);
+  cursor: pointer;
 }
 
 /* Delete profile button */

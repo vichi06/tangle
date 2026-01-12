@@ -17,15 +17,15 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { first_name, last_name, avatar, bio, is_civ, is_pending } = req.body;
+      const { first_name, last_name, avatar, bio, is_external, is_pending } = req.body;
 
       if (!first_name || !last_name) {
         return res.status(400).json({ error: 'First name and last name are required' });
       }
 
       const result = await db.execute({
-        sql: 'INSERT INTO people (first_name, last_name, avatar, bio, is_civ, is_pending) VALUES (?, ?, ?, ?, ?, ?)',
-        args: [first_name, last_name, avatar || null, bio || null, is_civ ? 1 : 0, is_pending ? 1 : 0]
+        sql: 'INSERT INTO people (first_name, last_name, avatar, bio, is_external, is_pending) VALUES (?, ?, ?, ?, ?, ?)',
+        args: [first_name, last_name, avatar || null, bio || null, is_external ? 1 : 0, is_pending ? 1 : 0]
       });
 
       const person = await db.execute({

@@ -11,7 +11,7 @@ function ProfileEdit({ user, onUpdate, onClose, onDelete }) {
     last_name: user.last_name,
     bio: user.bio || '',
     avatar: user.avatar || '',
-    is_civ: user.is_civ || false
+    is_external: !!user.is_external
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -80,16 +80,14 @@ function ProfileEdit({ user, onUpdate, onClose, onDelete }) {
             onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))}
           />
 
-          <button
-            type="button"
-            className={`civ-toggle-container ${profile.is_civ ? 'active' : ''}`}
-            onClick={() => setProfile(p => ({ ...p, is_civ: !p.is_civ }))}
-          >
-            <span className="civ-toggle-label">Part of CIV</span>
-            <span className="civ-toggle-track">
-              <span className="civ-toggle-thumb" />
-            </span>
-          </button>
+          <label className="external-checkbox">
+            <input
+              type="checkbox"
+              checked={profile.is_external}
+              onChange={e => setProfile(p => ({ ...p, is_external: e.target.checked }))}
+            />
+            <span>External to the group</span>
+          </label>
         </div>
 
         {error && <p className="profile-error">{error}</p>}

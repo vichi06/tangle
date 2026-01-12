@@ -25,7 +25,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
   const [managedUserId, setManagedUserId] = useState(currentUser.id);
   const [selectedPersonId, setSelectedPersonId] = useState('');
   const [newRelation, setNewRelation] = useState({ intensity: 'kiss', date: '', context: '' });
-  const [newPerson, setNewPerson] = useState({ first_name: '', last_name: '', bio: '', avatar: '', is_civ: false });
+  const [newPerson, setNewPerson] = useState({ first_name: '', last_name: '', bio: '', avatar: '', is_external: false });
   const [editingRelation, setEditingRelation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
@@ -133,7 +133,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
 
       if (!relRes.ok) throw new Error('Failed to create relationship');
 
-      setNewPerson({ first_name: '', last_name: '', bio: '', avatar: '', is_civ: false });
+      setNewPerson({ first_name: '', last_name: '', bio: '', avatar: '', is_external: false });
       setNewRelation({ intensity: 'kiss', date: '', context: '' });
       setMode('list');
       onDataChange();
@@ -475,16 +475,14 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
               onChange={e => setNewPerson(p => ({ ...p, bio: e.target.value }))}
             />
 
-            <button
-              type="button"
-              className={`civ-toggle-container ${newPerson.is_civ ? 'active' : ''}`}
-              onClick={() => setNewPerson(p => ({ ...p, is_civ: !p.is_civ }))}
-            >
-              <span className="civ-toggle-label">Part of CIV</span>
-              <span className="civ-toggle-track">
-                <span className="civ-toggle-thumb" />
-              </span>
-            </button>
+            <label className="external-checkbox">
+              <input
+                type="checkbox"
+                checked={newPerson.is_external}
+                onChange={e => setNewPerson(p => ({ ...p, is_external: e.target.checked }))}
+              />
+              <span>External to the group</span>
+            </label>
 
             <div className="relation-details">
               <label className="detail-label">How far?</label>

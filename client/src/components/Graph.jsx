@@ -23,7 +23,6 @@ const EDGE_NODE_REPULSION = 50;
 const DEFAULT_SETTINGS = {
   repulsion: 12500,     // 1/r² repulsion strength
   linkDistance: 30,     // Target distance for connected nodes
-  showCivBadge: true,   // Show CIV badge on nodes
   nodeSizeMode: 'both', // 'connections', 'betweenness', or 'both'
 };
 
@@ -534,7 +533,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         lastName: person.last_name,
         avatar: person.avatar,
         bio: person.bio,
-        isCiv: person.is_civ,
+        isExternal: !!person.is_external,
         isPending: !!person.is_pending,
         degree: m.degree,
         betweenness: m.betweenness,
@@ -749,12 +748,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
   // Update simulation when settings change
   useEffect(() => {
     settingsRef.current = settings;
-
-    // Update CIV badge visibility on all nodes (gRef.current is a D3 selection)
-    if (gRef.current) {
-      gRef.current.selectAll('.verified-badge')
-        .style('display', settings.showCivBadge ? null : 'none');
-    }
 
     if (!simulationRef.current) return;
 
@@ -1076,26 +1069,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       scaleGroup.append('circle')
         .attr('class', 'node-border')
         .attr('r', d.size / 2);
-
-      // CIV badge (always create if isCiv, visibility controlled by CSS/display)
-      if (d.isCiv) {
-        const badge = scaleGroup.append('g')
-          .attr('class', 'verified-badge')
-          .attr('transform', `translate(${d.size / 2 - d.size * 0.1}, ${-d.size / 2 + d.size * 0.1})`)
-          .style('display', settingsRef.current.showCivBadge ? null : 'none');
-
-        badge.append('circle')
-          .attr('r', d.size * 0.2)
-          .attr('fill', '#1d9bf0');
-
-        badge.append('text')
-          .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', 'central')
-          .attr('fill', 'white')
-          .attr('font-size', d.size * 0.14)
-          .attr('font-weight', '700')
-          .text('CIV');
-      }
     });
 
     // Icon configs for relationship types (single icon that grows and fades)
@@ -1213,22 +1186,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         .transition()
         .duration(500)
         .attr('font-size', d.size * 0.4);
-
-      // Animate badge position
-      scaleGroup.select('.verified-badge')
-        .transition()
-        .duration(500)
-        .attr('transform', `translate(${d.size / 2 - d.size * 0.1}, ${-d.size / 2 + d.size * 0.1})`);
-
-      scaleGroup.select('.verified-badge circle')
-        .transition()
-        .duration(500)
-        .attr('r', d.size * 0.2);
-
-      scaleGroup.select('.verified-badge text')
-        .transition()
-        .duration(500)
-        .attr('font-size', d.size * 0.14);
     });
 
     // Calculate BFS distances from a node
@@ -1492,22 +1449,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
                 settingKey="linkDistance"
                 onChange={(val) => updateSetting('linkDistance', val)}
               />
-
-              <div className="settings-toggle">
-                <label className="settings-label">
-                  <span>Show CIV Badge</span>
-                </label>
-                <button
-                  type="button"
-                  className={`toggle-btn ${settings.showCivBadge ? 'active' : ''}`}
-                  onClick={() => toggleSetting('showCivBadge')}
-                  aria-pressed={settings.showCivBadge}
-                >
-                  <span className="toggle-track">
-                    <span className="toggle-thumb" />
-                  </span>
-                </button>
-              </div>
 
               <div className="settings-segmented">
                 <label className="settings-label">
