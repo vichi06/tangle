@@ -6,7 +6,7 @@ const API_BASE = '/api';
 
 function WelcomeModal({ people, onSelect, onPersonAdded }) {
   const [mode, setMode] = useState('select'); // 'select', 'create', 'admin-verify', or 'confirm'
-  const [newPerson, setNewPerson] = useState({ first_name: '', last_name: '', bio: '', avatar: '', is_civ: false });
+  const [newPerson, setNewPerson] = useState({ first_name: '', last_name: '', bio: '', avatar: '', is_external: false });
   const [pendingSelection, setPendingSelection] = useState(null);
   const [codeDigits, setCodeDigits] = useState(['', '', '', '']);
   const [verifying, setVerifying] = useState(false);
@@ -320,16 +320,14 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
               />
             </div>
 
-            <button
-              type="button"
-              className={`civ-toggle-container ${newPerson.is_civ ? 'active' : ''}`}
-              onClick={() => setNewPerson(p => ({ ...p, is_civ: !p.is_civ }))}
-            >
-              <span className="civ-toggle-label">Part of CIV</span>
-              <span className="civ-toggle-track">
-                <span className="civ-toggle-thumb" />
-              </span>
-            </button>
+            <label className="external-checkbox">
+              <input
+                type="checkbox"
+                checked={newPerson.is_external}
+                onChange={e => setNewPerson(p => ({ ...p, is_external: e.target.checked }))}
+              />
+              <span>External to the group</span>
+            </label>
 
             {error && <p className="error-message">{error}</p>}
 

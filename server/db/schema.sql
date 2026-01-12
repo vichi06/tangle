@@ -4,16 +4,16 @@ CREATE TABLE IF NOT EXISTS people (
   last_name TEXT NOT NULL,
   avatar TEXT,
   bio TEXT,
-  is_civ INTEGER DEFAULT 0,
+  is_external INTEGER DEFAULT 0,
   is_admin INTEGER DEFAULT 0,
   admin_code TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Migration for existing databases (will fail silently if columns exist)
--- Run these manually if needed:
--- ALTER TABLE people ADD COLUMN is_admin INTEGER DEFAULT 0;
--- ALTER TABLE people ADD COLUMN admin_code TEXT;
+-- Migration for existing databases:
+-- 1. Add is_external column: ALTER TABLE people ADD COLUMN is_external INTEGER DEFAULT 0;
+-- 2. Migrate data: UPDATE people SET is_external = (1 - COALESCE(is_civ, 0));
+-- 3. Optionally remove is_civ: (keep for backwards compatibility or remove later)
 
 CREATE TABLE IF NOT EXISTS relationships (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
