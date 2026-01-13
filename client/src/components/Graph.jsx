@@ -262,8 +262,11 @@ function calculateCurvedPath(source, target, nodes, curveFactor = 50) {
     );
     
     // Use smooth falloff instead of hard threshold
-    const threshold = (node.size || 30) + 80;
-    const pushStrength = smoothFalloff(distToLine, threshold) * edgeFactor;
+    // Larger nodes push edges away more strongly
+    const nodeSize = node.size || 30;
+    const threshold = nodeSize + 80;
+    const sizeMultiplier = nodeSize / 30;  // 30 is baseline size
+    const pushStrength = smoothFalloff(distToLine, threshold) * edgeFactor * sizeMultiplier;
     
     if (pushStrength > 0.001) {
       // Direction from node to closest point on line (we push AWAY from node)
