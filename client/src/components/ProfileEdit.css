@@ -24,6 +24,27 @@
   margin-bottom: 24px;
 }
 
+/* Admin user selector */
+.admin-user-selector {
+  margin-bottom: 20px;
+}
+
+.admin-user-selector select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.admin-user-selector select:focus {
+  outline: none;
+  border-color: var(--text-muted);
+}
+
 .profile-avatar {
   display: flex;
   justify-content: center;

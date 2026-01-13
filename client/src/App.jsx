@@ -279,8 +279,15 @@ function App() {
       {showProfileEdit && (
         <ProfileEdit
           user={currentUser}
+          people={people}
+          currentUser={currentUser}
           onUpdate={handleProfileUpdate}
           onClose={() => setShowProfileEdit(false)}
+          onDelete={async (userId) => {
+            const res = await fetch(`${API_BASE}/people/${userId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete profile');
+            fetchData();
+          }}
         />
       )}
 
