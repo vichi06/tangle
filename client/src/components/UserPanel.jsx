@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import AvatarUpload from './AvatarUpload';
 import ConfirmModal from './ConfirmModal';
-import ProfileEdit from './ProfileEdit';
 import './UserPanel.css';
 
 const API_BASE = '/api';
@@ -31,7 +30,6 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
   const [message, setMessage] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmDeleteProfile, setConfirmDeleteProfile] = useState(false);
-  const [showProfileEdit, setShowProfileEdit] = useState(false);
 
   // The user whose relationships we're managing (admin can change this)
   const managedUser = useMemo(() => {
@@ -282,24 +280,15 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
                 </option>
               ))}
           </select>
-          <div className="admin-buttons">
+          {managedUser.id !== currentUser.id && (
             <button
-              className="admin-edit-profile-btn"
-              onClick={() => setShowProfileEdit(true)}
-              title="Edit this user's profile"
+              className="admin-delete-profile-btn"
+              onClick={() => setConfirmDeleteProfile(true)}
+              title="Delete this user's profile"
             >
-              Edit Profile
+              Delete Profile
             </button>
-            {managedUser.id !== currentUser.id && (
-              <button
-                className="admin-delete-profile-btn"
-                onClick={() => setConfirmDeleteProfile(true)}
-                title="Delete this user's profile"
-              >
-                Delete Profile
-              </button>
-            )}
-          </div>
+          )}
         </div>
       )}
 
@@ -575,21 +564,6 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
           message={`Delete ${managedUser.first_name} ${managedUser.last_name}'s profile? This will remove them and all their connections.`}
           onConfirm={deleteProfile}
           onCancel={() => setConfirmDeleteProfile(false)}
-        />
-      )}
-
-      {showProfileEdit && (
-        <ProfileEdit
-          user={managedUser}
-          onUpdate={() => {
-            onDataChange();
-            setShowProfileEdit(false);
-          }}
-          onClose={() => setShowProfileEdit(false)}
-          onDelete={managedUser.id !== currentUser.id ? async () => {
-            await deleteProfile();
-            setShowProfileEdit(false);
-          } : undefined}
         />
       )}
     </div>

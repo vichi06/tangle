@@ -1,21 +1,47 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import AvatarUpload from './AvatarUpload';
 import ConfirmModal from './ConfirmModal';
 import './ProfileEdit.css';
 
 const API_BASE = '/api';
 
-function ProfileEdit({ user, onUpdate, onClose, onDelete }) {
+function ProfileEdit({ user, people, currentUser, onUpdate, onClose, onDelete }) {
+  // For admins, allow selecting which user to edit
+  const [selectedUserId, setSelectedUserId] = useState(user.id);
+  const isAdmin = !!currentUser?.is_admin;
+
+  // The user being edited
+  const editingUser = useMemo(() => {
+    if (isAdmin && people) {
+      return people.find(p => p.id === selectedUserId) || user;
+    }
+    return user;
+  }, [isAdmin, people, selectedUserId, user]);
+
   const [profile, setProfile] = useState({
-    first_name: user.first_name,
-    last_name: user.last_name,
-    bio: user.bio || '',
-    avatar: user.avatar || '',
-    is_external: !!user.is_external
+    first_name: editingUser.first_name,
+    last_name: editingUser.last_name,
+    bio: editingUser.bio || '',
+    avatar: editingUser.avatar || '',
+    is_external: !!editingUser.is_external
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Update form when selected user changes
+  const handleUserChange = (newUserId) => {
+    setSelectedUserId(newUserId);
+    const newUser = people.find(p => p.id === newUserId) || user;
+    setProfile({
+      first_name: newUser.first_name,
+      last_name: newUser.last_name,
+      bio: newUser.bio || '',
+      avatar: newUser.avatar || '',
+      is_external: !!newUser.is_external
+    });
+    setError(null);
+  };
 
   const handleSave = async () => {
     if (!profile.first_name.trim() || !profile.last_name.trim()) {
@@ -27,7 +53,7 @@ function ProfileEdit({ user, onUpdate, onClose, onDelete }) {
     setError(null);
 
     try {
-      const res = await fetch(`${API_BASE}/people/${user.id}`, {
+      const res = await fetch(`${API_BASE}/people/${editingUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(profile)
@@ -45,10 +71,46 @@ function ProfileEdit({ user, onUpdate, onClose, onDelete }) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setLoading(true);
+    try {
+      await onDelete(editingUser.id);
+      onClose();
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  // Can delete only if editing someone else (not self)
+  const canDelete = isAdmin && editingUser.id !== currentUser.id;
+
   return (
     <div className="profile-edit-overlay" onClick={onClose}>
       <div className="profile-edit-modal" onClick={e => e.stopPropagation()}>
         <h2>Edit Profile</h2>
+
+        {isAdmin && people && (
+          <div className="admin-user-selector">
+            <select
+              value={selectedUserId}
+              onChange={e => handleUserChange(parseInt(e.target.value))}
+            >
+              {[...people]
+                .sort((a, b) => {
+                  const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+                  const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+                  return nameA.localeCompare(nameB);
+                })
+                .map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.first_name} {p.last_name} {p.id === currentUser.id ? '(You)' : ''}
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
 
         <div className="profile-avatar">
           <AvatarUpload
@@ -101,7 +163,7 @@ function ProfileEdit({ user, onUpdate, onClose, onDelete }) {
           </button>
         </div>
 
-        {onDelete && (
+        {canDelete && onDelete && (
           <button
             className="delete-profile-btn"
             onClick={() => setShowDeleteConfirm(true)}
@@ -112,10 +174,10 @@ function ProfileEdit({ user, onUpdate, onClose, onDelete }) {
 
         {showDeleteConfirm && (
           <ConfirmModal
-            message={`Delete ${user.first_name} ${user.last_name}'s profile? This will remove them and all their connections.`}
+            message={`Delete ${editingUser.first_name} ${editingUser.last_name}'s profile? This will remove them and all their connections.`}
             onConfirm={() => {
               setShowDeleteConfirm(false);
-              onDelete();
+              handleDelete();
             }}
             onCancel={() => setShowDeleteConfirm(false)}
           />
