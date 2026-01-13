@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Graph from './components/Graph';
 import Tooltip from './components/Tooltip';
 import UserPanel from './components/UserPanel';
-import IdeasPanel from './components/IdeasPanel';
+import ChatroomPanel from './components/ChatroomPanel';
 import WelcomeModal from './components/WelcomeModal';
 import ProfileEdit from './components/ProfileEdit';
 import './App.css';
@@ -10,7 +10,7 @@ import './App.css';
 const API_BASE = '/api';
 const USER_COOKIE_NAME = 'tangle_user_id';
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
-const IDEAS_LAST_SEEN_KEY = 'tangle_ideas_last_seen'; // localStorage key prefix
+const CHATROOM_LAST_SEEN_KEY = 'tangle_chatroom_last_seen'; // localStorage key prefix
 
 // Cookie helpers
 const getCookie = (name) => {
@@ -29,11 +29,11 @@ function App() {
   const [userChecked, setUserChecked] = useState(false);
   const [error, setError] = useState(null);
   const [showPanel, setShowPanel] = useState(false);
-  const [showIdeasPanel, setShowIdeasPanel] = useState(false);
+  const [showChatroomPanel, setShowChatroomPanel] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [tooltip, setTooltip] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [newIdeasCount, setNewIdeasCount] = useState(0);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     try {
@@ -105,53 +105,53 @@ function App() {
     fetchData();
   };
 
-  // Get the localStorage key for the current user's last seen ideas timestamp
-  const getIdeasLastSeenKey = useCallback(() => {
-    return currentUser ? `${IDEAS_LAST_SEEN_KEY}_${currentUser.id}` : null;
+  // Get the localStorage key for the current user's last seen chatroom timestamp
+  const getChatroomLastSeenKey = useCallback(() => {
+    return currentUser ? `${CHATROOM_LAST_SEEN_KEY}_${currentUser.id}` : null;
   }, [currentUser]);
 
-  // Fetch count of new ideas since user's last visit
-  const fetchNewIdeasCount = useCallback(async () => {
+  // Fetch count of new messages since user's last visit
+  const fetchNewMessagesCount = useCallback(async () => {
     if (!currentUser) return;
-    
-    const key = getIdeasLastSeenKey();
+
+    const key = getChatroomLastSeenKey();
     const lastSeen = localStorage.getItem(key);
-    
+
     try {
-      const url = lastSeen 
-        ? `${API_BASE}/ideas/new-count/${currentUser.id}?since=${encodeURIComponent(lastSeen)}`
-        : `${API_BASE}/ideas/new-count/${currentUser.id}`;
+      const url = lastSeen
+        ? `${API_BASE}/chatroom/new-count/${currentUser.id}?since=${encodeURIComponent(lastSeen)}`
+        : `${API_BASE}/chatroom/new-count/${currentUser.id}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        setNewIdeasCount(data.count);
+        setNewMessagesCount(data.count);
       }
     } catch (err) {
-      console.error('Failed to fetch new ideas count:', err);
+      console.error('Failed to fetch new messages count:', err);
     }
-  }, [currentUser, getIdeasLastSeenKey]);
+  }, [currentUser, getChatroomLastSeenKey]);
 
-  // Fetch new ideas count when user is set and periodically
+  // Fetch new messages count when user is set and periodically
   useEffect(() => {
     if (currentUser) {
-      fetchNewIdeasCount();
-      const interval = setInterval(fetchNewIdeasCount, 30000); // Check every 30 seconds
+      fetchNewMessagesCount();
+      const interval = setInterval(fetchNewMessagesCount, 30000); // Check every 30 seconds
       return () => clearInterval(interval);
     }
-  }, [currentUser, fetchNewIdeasCount]);
+  }, [currentUser, fetchNewMessagesCount]);
 
-  // Handle opening Ideas panel - mark as seen
-  const handleOpenIdeasPanel = () => {
-    if (!showIdeasPanel) {
+  // Handle opening Chatroom panel - mark as seen
+  const handleOpenChatroomPanel = () => {
+    if (!showChatroomPanel) {
       // Opening the panel - update last seen timestamp
-      const key = getIdeasLastSeenKey();
+      const key = getChatroomLastSeenKey();
       if (key) {
         const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
         localStorage.setItem(key, now);
-        setNewIdeasCount(0);
+        setNewMessagesCount(0);
       }
     }
-    setShowIdeasPanel(!showIdeasPanel);
+    setShowChatroomPanel(!showChatroomPanel);
   };
 
   if (loading || !userChecked) {
@@ -196,12 +196,12 @@ function App() {
       <div className="top-bar">
         <div className="top-bar-left">
           <button
-            className="panel-toggle ideas-toggle"
-            onClick={handleOpenIdeasPanel}
+            className="panel-toggle chatroom-toggle"
+            onClick={handleOpenChatroomPanel}
           >
-            {showIdeasPanel ? 'Close' : 'Ideas'}
-            {!showIdeasPanel && newIdeasCount > 0 && (
-              <span className="notification-badge">{newIdeasCount > 9 ? '9+' : newIdeasCount}</span>
+            {showChatroomPanel ? 'Close' : 'Chatroom'}
+            {!showChatroomPanel && newMessagesCount > 0 && (
+              <span className="notification-badge">{newMessagesCount > 9 ? '9+' : newMessagesCount}</span>
             )}
           </button>
           <div className="current-user" onClick={() => setShowProfileEdit(true)}>
@@ -234,10 +234,10 @@ function App() {
         />
       )}
 
-      {showIdeasPanel && (
-        <IdeasPanel
+      {showChatroomPanel && (
+        <ChatroomPanel
           currentUser={currentUser}
-          onClose={() => setShowIdeasPanel(false)}
+          onClose={() => setShowChatroomPanel(false)}
         />
       )}
 

@@ -86,7 +86,7 @@ git checkout dev
 | `Graph.jsx` | D3 force-directed graph with curved edges, settings panel, reveal animation |
 | `UserPanel.jsx` | Relationship CRUD, admin user selector, profile deletion |
 | `WelcomeModal.jsx` | Profile selection with search and PIN input |
-| `IdeasPanel.jsx` | Feedback submission with cooldown, voting |
+| `ChatroomPanel.jsx` | Chatroom with messages, cooldown, voting |
 | `ProfileEdit.jsx` | Edit user profile details (admin can edit any user) |
 | `Tooltip.jsx` | Hover info on graph nodes with colored intensity dots |
 | `ConfirmModal.jsx` | Confirmation dialogs for destructive actions |

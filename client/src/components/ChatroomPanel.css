@@ -1,4 +1,4 @@
-.ideas-panel {
+.chatroom-panel {
   position: fixed;
   top: 0;
   left: 0;
@@ -18,7 +18,7 @@
   to { transform: translateX(0); }
 }
 
-.ideas-panel .panel-header {
+.chatroom-panel .panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -26,13 +26,13 @@
   border-bottom: 1px solid var(--border-color);
 }
 
-.ideas-panel .panel-header h2 {
+.chatroom-panel .panel-header h2 {
   font-size: 18px;
   font-weight: 600;
   margin: 0;
 }
 
-.ideas-panel .close-btn {
+.chatroom-panel .close-btn {
   background: none;
   border: none;
   font-size: 20px;
@@ -42,22 +42,22 @@
   line-height: 1;
 }
 
-.ideas-panel .close-btn:hover {
+.chatroom-panel .close-btn:hover {
   color: var(--text-primary);
 }
 
-.ideas-panel .panel-message {
+.chatroom-panel .panel-message {
   padding: 10px 20px;
   font-size: 14px;
 }
 
-.ideas-panel .panel-message.error {
+.chatroom-panel .panel-message.error {
   background: rgba(255, 100, 100, 0.1);
   color: #ff6b6b;
 }
 
 /* Message list */
-.ideas-list {
+.chatroom-list {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
@@ -66,15 +66,15 @@
   gap: 12px;
 }
 
-.ideas-loading,
-.no-ideas {
+.chatroom-loading,
+.no-messages {
   text-align: center;
   color: var(--text-muted);
   padding: 40px 20px;
 }
 
-/* Individual idea/message */
-.idea-item {
+/* Individual message */
+.message-item {
   display: flex;
   gap: 10px;
   padding: 12px;
@@ -82,13 +82,13 @@
   border-radius: 10px;
 }
 
-.idea-item.own {
+.message-item.own {
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
 }
 
-.idea-avatar img,
-.idea-avatar .avatar-placeholder {
+.message-avatar img,
+.message-avatar .avatar-placeholder {
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -96,7 +96,7 @@
   flex-shrink: 0;
 }
 
-.idea-avatar .avatar-placeholder {
+.message-avatar .avatar-placeholder {
   background: var(--border-color);
   display: flex;
   align-items: center;
@@ -106,12 +106,12 @@
   color: var(--text-secondary);
 }
 
-.idea-content {
+.message-content {
   flex: 1;
   min-width: 0;
 }
 
-.idea-header {
+.message-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -119,19 +119,19 @@
   margin-bottom: 4px;
 }
 
-.idea-sender {
+.message-sender {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.idea-time {
+.message-time {
   font-size: 11px;
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
-.idea-text {
+.message-text {
   font-size: 14px;
   color: var(--text-secondary);
   line-height: 1.4;
@@ -140,7 +140,7 @@
 }
 
 /* Voting buttons */
-.idea-votes {
+.message-votes {
   display: flex;
   gap: 8px;
   margin-top: 8px;
@@ -186,7 +186,7 @@
 }
 
 /* Input form */
-.idea-form {
+.message-form {
   padding: 16px;
   border-top: 1px solid var(--border-color);
 }
@@ -201,12 +201,12 @@
   margin-bottom: 12px;
 }
 
-.idea-input-row {
+.message-input-row {
   display: flex;
   gap: 10px;
 }
 
-.idea-input-row textarea {
+.message-input-row textarea {
   flex: 1;
   min-height: 40px;
   max-height: 100px;
@@ -215,7 +215,7 @@
   font-size: 14px;
 }
 
-.idea-input-row button {
+.message-input-row button {
   padding: 10px 16px;
   background: var(--text-primary);
   color: var(--bg-primary);
@@ -225,11 +225,11 @@
   border-radius: 4px;
 }
 
-.idea-input-row button:hover:not(:disabled) {
+.message-input-row button:hover:not(:disabled) {
   background: var(--text-secondary);
 }
 
-.idea-input-row button:disabled {
+.message-input-row button:disabled {
   background: var(--border-color);
   color: var(--text-muted);
   cursor: not-allowed;
