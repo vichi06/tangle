@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { sender_id, content } = req.body;
+      const { sender_id, content, mentioned_ids } = req.body;
 
       if (!sender_id) {
         return res.status(400).json({ error: 'Sender ID is required' });
@@ -73,33 +73,47 @@ export default async function handler(req, res) {
       }
 
       // Check cooldown
-      const lastIdea = await db.execute({
+      const lastMessage = await db.execute({
         sql: 'SELECT created_at FROM ideas WHERE sender_id = ? ORDER BY created_at DESC LIMIT 1',
         args: [sender_id]
       });
 
-      if (lastIdea.rows.length > 0) {
-        const lastTime = new Date(lastIdea.rows[0].created_at + 'Z').getTime();
+      if (lastMessage.rows.length > 0) {
+        const lastTime = new Date(lastMessage.rows[0].created_at + 'Z').getTime();
         const now = Date.now();
         const elapsed = now - lastTime;
 
         if (elapsed < COOLDOWN_MS) {
           const remaining = Math.ceil((COOLDOWN_MS - elapsed) / 60000);
           return res.status(429).json({
-            error: `Please wait ${remaining} minutes before sending another idea`,
+            error: `Please wait ${remaining} minutes before sending another message`,
             remainingMs: COOLDOWN_MS - elapsed
           });
         }
       }
 
-      // Insert new idea
+      // Insert new message
       const insert = await db.execute({
         sql: 'INSERT INTO ideas (sender_id, content) VALUES (?, ?)',
         args: [sender_id, content.trim()]
       });
 
+      const messageId = insert.lastInsertRowid;
+
+      // Insert mentions if any (exclude self-mentions)
+      if (mentioned_ids && Array.isArray(mentioned_ids) && mentioned_ids.length > 0) {
+        for (const userId of mentioned_ids) {
+          if (userId !== sender_id) {
+            await db.execute({
+              sql: 'INSERT OR IGNORE INTO message_mentions (message_id, mentioned_user_id) VALUES (?, ?)',
+              args: [messageId, userId]
+            });
+          }
+        }
+      }
+
       // Return with sender info
-      const idea = await db.execute({
+      const message = await db.execute({
         sql: `
           SELECT
             i.*,
@@ -110,10 +124,10 @@ export default async function handler(req, res) {
           JOIN people p ON i.sender_id = p.id
           WHERE i.id = ?
         `,
-        args: [insert.lastInsertRowid]
+        args: [messageId]
       });
 
-      return res.status(201).json(idea.rows[0]);
+      return res.status(201).json(message.rows[0]);
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
