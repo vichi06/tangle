@@ -103,9 +103,9 @@ router.get('/new-count/:userId', (req, res) => {
   }
 });
 
-// Submit new idea
+// Submit new message
 router.post('/', (req, res) => {
-  const { sender_id, content } = req.body;
+  const { sender_id, content, mentioned_ids } = req.body;
 
   // Validation
   if (!sender_id) {
@@ -143,18 +143,31 @@ router.post('/', (req, res) => {
       if (elapsed < COOLDOWN_MS) {
         const remaining = Math.ceil((COOLDOWN_MS - elapsed) / 60000);
         return res.status(429).json({
-          error: `Please wait ${remaining} minutes before sending another idea`,
+          error: `Please wait ${remaining} minutes before sending another message`,
           remainingMs: COOLDOWN_MS - elapsed
         });
       }
     }
 
-    // Insert new idea
+    // Insert new message
     const stmt = db.prepare('INSERT INTO ideas (sender_id, content) VALUES (?, ?)');
     const result = stmt.run(sender_id, content.trim());
+    const messageId = result.lastInsertRowid;
+
+    // Insert mentions if any (exclude self-mentions)
+    if (mentioned_ids && Array.isArray(mentioned_ids) && mentioned_ids.length > 0) {
+      const mentionStmt = db.prepare(
+        'INSERT OR IGNORE INTO message_mentions (message_id, mentioned_user_id) VALUES (?, ?)'
+      );
+      for (const userId of mentioned_ids) {
+        if (userId !== sender_id) {
+          mentionStmt.run(messageId, userId);
+        }
+      }
+    }
 
     // Return with sender info
-    const idea = db.prepare(`
+    const message = db.prepare(`
       SELECT
         i.*,
         p.first_name as sender_first_name,
@@ -163,9 +176,41 @@ router.post('/', (req, res) => {
       FROM ideas i
       JOIN people p ON i.sender_id = p.id
       WHERE i.id = ?
-    `).get(result.lastInsertRowid);
+    `).get(messageId);
 
-    res.status(201).json(idea);
+    res.status(201).json(message);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get count of unseen mentions for a user
+router.get('/mentions/count/:userId', (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const result = db.prepare(`
+      SELECT COUNT(*) as count FROM message_mentions
+      WHERE mentioned_user_id = ? AND seen = 0
+    `).get(userId);
+
+    res.json({ count: result.count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Mark all mentions as seen for a user
+router.post('/mentions/mark-seen/:userId', (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    db.prepare(`
+      UPDATE message_mentions SET seen = 1
+      WHERE mentioned_user_id = ? AND seen = 0
+    `).run(userId);
+
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

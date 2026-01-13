@@ -3,15 +3,33 @@ import './ChatroomPanel.css';
 
 const API_BASE = '/api';
 
-function ChatroomPanel({ currentUser, onClose }) {
+function ChatroomPanel({ currentUser, people, onClose }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [cooldown, setCooldown] = useState({ canSend: true, remainingMs: 0 });
+  const [mentionedUsers, setMentionedUsers] = useState([]);
+  const [showMentionMenu, setShowMentionMenu] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionIndex, setMentionIndex] = useState(0);
   const messagesEndRef = useRef(null);
   const cooldownIntervalRef = useRef(null);
+  const inputRef = useRef(null);
+  const mentionMenuRef = useRef(null);
+  const savedSelectionRef = useRef(null);
+
+  // Build a map of user names to IDs for mention parsing
+  const userNameMap = useRef({});
+  useEffect(() => {
+    const map = {};
+    people.forEach(p => {
+      const fullName = `${p.first_name} ${p.last_name}`;
+      map[fullName.toLowerCase()] = p.id;
+    });
+    userNameMap.current = map;
+  }, [people]);
 
   // Fetch all messages with user's votes
   const fetchMessages = useCallback(async () => {
@@ -94,13 +112,318 @@ function ChatroomPanel({ currentUser, onClose }) {
     });
   };
 
+  // Filter people for mention autocomplete
+  const filteredPeople = mentionQuery
+    ? people.filter(p => {
+        const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
+        const query = mentionQuery.toLowerCase();
+        return fullName.includes(query) || p.first_name.toLowerCase().includes(query);
+      }).slice(0, 5)
+    : people.slice(0, 5);
+
+  // Get plain text content from contenteditable
+  const getPlainText = () => {
+    if (!inputRef.current) return '';
+    let text = '';
+    const walk = (node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        text += node.textContent;
+      } else if (node.classList?.contains('mention-chip')) {
+        text += node.textContent;
+      } else if (node.nodeName === 'BR') {
+        text += '\n';
+      } else {
+        node.childNodes.forEach(walk);
+      }
+    };
+    walk(inputRef.current);
+    return text;
+  };
+
+  // Extract mentioned user IDs from DOM
+  const extractMentionedIdsFromDOM = () => {
+    if (!inputRef.current) return [];
+    const chips = inputRef.current.querySelectorAll('.mention-chip');
+    const ids = new Set();
+    chips.forEach(chip => {
+      const userId = chip.dataset.userId;
+      if (userId) ids.add(parseInt(userId));
+    });
+    return Array.from(ids);
+  };
+
+  // Sync contenteditable to state
+  const syncContent = () => {
+    const text = getPlainText();
+    setNewMessage(text);
+    setMentionedUsers(extractMentionedIdsFromDOM());
+  };
+
+  // Handle input in contenteditable
+  const handleInput = () => {
+    syncContent();
+
+    // Check for @ mention trigger
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+    const textNode = range.startContainer;
+
+    if (textNode.nodeType === Node.TEXT_NODE) {
+      const text = textNode.textContent;
+      const cursorPos = range.startOffset;
+      const textBeforeCursor = text.substring(0, cursorPos);
+      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+      if (lastAtIndex !== -1) {
+        const charBefore = lastAtIndex > 0 ? text[lastAtIndex - 1] : ' ';
+        if (charBefore === ' ' || charBefore === '\n' || lastAtIndex === 0) {
+          const query = textBeforeCursor.substring(lastAtIndex + 1);
+          if (!query.includes(' ') || query.split(' ').length <= 2) {
+            // Save selection for later use when clicking menu item
+            savedSelectionRef.current = {
+              textNode,
+              cursorPos,
+              lastAtIndex
+            };
+            setMentionQuery(query);
+            setShowMentionMenu(true);
+            setMentionIndex(0);
+            return;
+          }
+        }
+      }
+    }
+
+    setShowMentionMenu(false);
+    setMentionQuery('');
+    savedSelectionRef.current = null;
+  };
+
+  // Handle keydown in contenteditable
+  const handleKeyDown = (e) => {
+    // Handle mention menu navigation
+    if (showMentionMenu) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex(prev => Math.min(prev + 1, filteredPeople.length - 1));
+        return;
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex(prev => Math.max(prev - 1, 0));
+        return;
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (filteredPeople.length > 0) {
+          selectMention(filteredPeople[mentionIndex]);
+        }
+        return;
+      } else if (e.key === 'Escape') {
+        setShowMentionMenu(false);
+        return;
+      }
+    }
+
+    // Handle backspace/delete on mention chip
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed) return; // Let default handle selection deletion
+
+      const container = range.startContainer;
+      const offset = range.startOffset;
+
+      // Check if cursor is inside a mention chip
+      const parentChip = container.parentElement?.closest('.mention-chip');
+      if (parentChip) {
+        e.preventDefault();
+        parentChip.remove();
+        syncContent();
+        return;
+      }
+
+      if (e.key === 'Backspace') {
+        // Helper to find previous mention chip, skipping empty text nodes
+        const findPrevMentionChip = (node) => {
+          let prev = node.previousSibling;
+          while (prev) {
+            if (prev.classList?.contains('mention-chip')) return prev;
+            // Skip empty text nodes
+            if (prev.nodeType === Node.TEXT_NODE && prev.textContent.trim() === '') {
+              prev = prev.previousSibling;
+              continue;
+            }
+            break;
+          }
+          return null;
+        };
+
+        // Check if cursor is at start of a node, previous sibling is mention
+        if (offset === 0) {
+          const prevChip = findPrevMentionChip(container);
+          if (prevChip) {
+            e.preventDefault();
+            prevChip.remove();
+            syncContent();
+            return;
+          }
+        }
+
+        // Check if cursor is right after whitespace that follows a mention
+        // (e.g., cursor after the NBSP we insert after chips)
+        if (container.nodeType === Node.TEXT_NODE && offset <= container.textContent.length) {
+          const textBefore = container.textContent.substring(0, offset);
+          // If only whitespace before cursor in this node, check previous sibling
+          if (textBefore.trim() === '' && textBefore.length > 0) {
+            const prevChip = findPrevMentionChip(container);
+            if (prevChip) {
+              e.preventDefault();
+              // Remove the whitespace and the chip
+              container.textContent = container.textContent.substring(offset);
+              prevChip.remove();
+              if (container.textContent === '') container.remove();
+              syncContent();
+              return;
+            }
+          }
+        }
+      }
+
+      if (e.key === 'Delete') {
+        // Check if next sibling is a mention chip
+        if (container.nodeType === Node.TEXT_NODE && offset === container.textContent.length) {
+          const next = container.nextSibling;
+          if (next?.classList?.contains('mention-chip')) {
+            e.preventDefault();
+            next.remove();
+            syncContent();
+            return;
+          }
+        }
+        // Check if at end of node and next is mention
+        if (offset === 0 && container.nodeType !== Node.TEXT_NODE) {
+          const next = container.nextSibling;
+          if (next?.classList?.contains('mention-chip')) {
+            e.preventDefault();
+            next.remove();
+            syncContent();
+            return;
+          }
+        }
+      }
+    }
+
+    // Handle Enter to submit (without mention menu)
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
+  // Handle paste - strip HTML
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+  };
+
+  // Select a user from mention menu
+  const selectMention = (person) => {
+    // Use saved selection since clicking menu loses focus
+    const saved = savedSelectionRef.current;
+    if (!saved || !saved.textNode || !saved.textNode.parentNode) return;
+
+    const { textNode, cursorPos, lastAtIndex } = saved;
+    const text = textNode.textContent;
+    const fullName = `${person.first_name} ${person.last_name}`;
+
+    // Create mention chip
+    const chip = document.createElement('span');
+    chip.className = 'mention-chip';
+    chip.contentEditable = 'false';
+    chip.dataset.userId = person.id;
+    chip.textContent = `@${fullName}`;
+
+    // Split text node and insert chip
+    const beforeAt = text.substring(0, lastAtIndex);
+    const afterCursor = text.substring(cursorPos);
+
+    const spaceNode = document.createTextNode('\u00A0'); // non-breaking space after chip
+
+    const parent = textNode.parentNode;
+
+    // Only insert beforeNode if there's text before the @
+    if (beforeAt) {
+      const beforeNode = document.createTextNode(beforeAt);
+      parent.insertBefore(beforeNode, textNode);
+    }
+    parent.insertBefore(chip, textNode);
+    parent.insertBefore(spaceNode, textNode);
+    if (afterCursor) {
+      const afterNode = document.createTextNode(afterCursor);
+      parent.insertBefore(afterNode, textNode);
+    }
+    parent.removeChild(textNode);
+
+    // Set cursor after the space
+    const selection = window.getSelection();
+    const newRange = document.createRange();
+    newRange.setStartAfter(spaceNode);
+    newRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+
+    // Focus back on input
+    inputRef.current?.focus();
+
+    setShowMentionMenu(false);
+    setMentionQuery('');
+    savedSelectionRef.current = null;
+    syncContent();
+  };
+
+  // Render message content with highlighted mentions
+  const renderMessageContent = (content) => {
+    const parts = [];
+    const mentionPattern = /@([A-Za-zÀ-ÿ]+ [A-Za-zÀ-ÿ]+)/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = mentionPattern.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(content.substring(lastIndex, match.index));
+      }
+      const mentionName = match[1];
+      const isMentioningMe = mentionName.toLowerCase() ===
+        `${currentUser.first_name} ${currentUser.last_name}`.toLowerCase();
+      parts.push(
+        <span key={match.index} className={`mention ${isMentioningMe ? 'mention-me' : ''}`}>
+          @{mentionName}
+        </span>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < content.length) {
+      parts.push(content.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : content;
+  };
+
   // Submit new message
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !cooldown.canSend) return;
+    e?.preventDefault();
+    const text = getPlainText().trim();
+    if (!text || !cooldown.canSend) return;
 
     setSending(true);
     setError(null);
+
+    const mentioned_ids = extractMentionedIdsFromDOM();
 
     try {
       const res = await fetch(`${API_BASE}/chatroom`, {
@@ -108,7 +431,8 @@ function ChatroomPanel({ currentUser, onClose }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sender_id: currentUser.id,
-          content: newMessage.trim()
+          content: text,
+          mentioned_ids
         })
       });
 
@@ -122,7 +446,12 @@ function ChatroomPanel({ currentUser, onClose }) {
       }
 
       setMessages(prev => [...prev, { ...data, upvotes: 0, downvotes: 0, userVote: 0 }]);
+      // Clear input
+      if (inputRef.current) {
+        inputRef.current.innerHTML = '';
+      }
       setNewMessage('');
+      setMentionedUsers([]);
       setCooldown({ canSend: false, remainingMs: 30 * 60 * 1000 });
     } catch (err) {
       setError(err.message);
@@ -137,20 +466,16 @@ function ChatroomPanel({ currentUser, onClose }) {
     const message = messages.find(m => m.id === messageId);
     if (!message) return;
 
-    // If clicking same vote type, remove vote (toggle off)
     const newVote = message.userVote === voteType ? 0 : voteType;
 
-    // Optimistic update
     setMessages(prev => prev.map(m => {
       if (m.id !== messageId) return m;
       let upvotes = m.upvotes;
       let downvotes = m.downvotes;
 
-      // Remove old vote
       if (m.userVote === 1) upvotes--;
       if (m.userVote === -1) downvotes--;
 
-      // Add new vote
       if (newVote === 1) upvotes++;
       if (newVote === -1) downvotes++;
 
@@ -169,19 +494,20 @@ function ChatroomPanel({ currentUser, onClose }) {
       }
 
       const data = await res.json();
-      // Update with server response
       setMessages(prev => prev.map(m =>
         m.id === messageId
           ? { ...m, upvotes: data.upvotes, downvotes: data.downvotes, userVote: data.userVote }
           : m
       ));
     } catch (err) {
-      // Revert on error
       fetchMessages();
       setError('Failed to vote');
       setTimeout(() => setError(null), 3000);
     }
   };
+
+  const isDisabled = !cooldown.canSend || sending;
+  const placeholderText = cooldown.canSend ? "Send a message... (use @ to mention)" : "Wait for cooldown...";
 
   return (
     <div className="chatroom-panel">
@@ -221,7 +547,7 @@ function ChatroomPanel({ currentUser, onClose }) {
                   </span>
                   <span className="message-time">{formatTime(message.created_at)}</span>
                 </div>
-                <p className="message-text">{message.content}</p>
+                <p className="message-text">{renderMessageContent(message.content)}</p>
                 <div className="message-votes">
                   <button
                     className={`vote-btn upvote ${message.userVote === 1 ? 'active' : ''}`}
@@ -258,17 +584,42 @@ function ChatroomPanel({ currentUser, onClose }) {
           </div>
         )}
         <div className="message-input-row">
-          <textarea
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder={cooldown.canSend ? "Send a message..." : "Wait for cooldown..."}
-            disabled={!cooldown.canSend || sending}
-            maxLength={500}
-            rows={2}
-          />
+          <div className="textarea-wrapper">
+            <div
+              ref={inputRef}
+              className={`message-input ${isDisabled ? 'disabled' : ''}`}
+              contentEditable={!isDisabled}
+              onInput={handleInput}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              data-placeholder={placeholderText}
+              suppressContentEditableWarning
+            />
+            {showMentionMenu && filteredPeople.length > 0 && (
+              <div className="mention-menu" ref={mentionMenuRef} onMouseDown={e => e.preventDefault()}>
+                {filteredPeople.map((person, idx) => (
+                  <div
+                    key={person.id}
+                    className={`mention-item ${idx === mentionIndex ? 'selected' : ''}`}
+                    onMouseEnter={() => setMentionIndex(idx)}
+                    onClick={() => selectMention(person)}
+                  >
+                    {person.avatar ? (
+                      <img src={person.avatar} alt="" className="mention-avatar" />
+                    ) : (
+                      <div className="mention-avatar-placeholder">
+                        {person.first_name.charAt(0)}
+                      </div>
+                    )}
+                    <span>{person.first_name} {person.last_name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             type="submit"
-            disabled={!cooldown.canSend || !newMessage.trim() || sending}
+            disabled={isDisabled || !newMessage.trim()}
           >
             {sending ? '...' : 'Send'}
           </button>

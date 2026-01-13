@@ -193,6 +193,12 @@
   animation: badge-pop 0.3s ease-out;
 }
 
+.notification-badge.mention-badge {
+  right: auto;
+  left: -6px;
+  background: #5c9aff;
+}
+
 @keyframes badge-pop {
   0% {
     transform: scale(0);

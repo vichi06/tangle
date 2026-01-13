@@ -34,6 +34,7 @@ function App() {
   const [tooltip, setTooltip] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const [newMentionsCount, setNewMentionsCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     try {
@@ -131,17 +132,36 @@ function App() {
     }
   }, [currentUser, getChatroomLastSeenKey]);
 
-  // Fetch new messages count when user is set and periodically
+  // Fetch count of unseen mentions
+  const fetchNewMentionsCount = useCallback(async () => {
+    if (!currentUser) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/chatroom/mentions/count/${currentUser.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setNewMentionsCount(data.count);
+      }
+    } catch (err) {
+      console.error('Failed to fetch mentions count:', err);
+    }
+  }, [currentUser]);
+
+  // Fetch new messages and mentions count when user is set and periodically
   useEffect(() => {
     if (currentUser) {
       fetchNewMessagesCount();
-      const interval = setInterval(fetchNewMessagesCount, 30000); // Check every 30 seconds
+      fetchNewMentionsCount();
+      const interval = setInterval(() => {
+        fetchNewMessagesCount();
+        fetchNewMentionsCount();
+      }, 30000); // Check every 30 seconds
       return () => clearInterval(interval);
     }
-  }, [currentUser, fetchNewMessagesCount]);
+  }, [currentUser, fetchNewMessagesCount, fetchNewMentionsCount]);
 
   // Handle opening Chatroom panel - mark as seen
-  const handleOpenChatroomPanel = () => {
+  const handleOpenChatroomPanel = async () => {
     if (!showChatroomPanel) {
       // Opening the panel - update last seen timestamp
       const key = getChatroomLastSeenKey();
@@ -149,6 +169,17 @@ function App() {
         const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
         localStorage.setItem(key, now);
         setNewMessagesCount(0);
+      }
+      // Mark mentions as seen
+      if (currentUser && newMentionsCount > 0) {
+        try {
+          await fetch(`${API_BASE}/chatroom/mentions/mark-seen/${currentUser.id}`, {
+            method: 'POST'
+          });
+          setNewMentionsCount(0);
+        } catch (err) {
+          console.error('Failed to mark mentions as seen:', err);
+        }
       }
     }
     setShowChatroomPanel(!showChatroomPanel);
@@ -200,6 +231,9 @@ function App() {
             onClick={handleOpenChatroomPanel}
           >
             {showChatroomPanel ? 'Close' : 'Chatroom'}
+            {!showChatroomPanel && newMentionsCount > 0 && (
+              <span className="notification-badge mention-badge">@{newMentionsCount > 9 ? '9+' : newMentionsCount}</span>
+            )}
             {!showChatroomPanel && newMessagesCount > 0 && (
               <span className="notification-badge">{newMessagesCount > 9 ? '9+' : newMessagesCount}</span>
             )}
@@ -237,6 +271,7 @@ function App() {
       {showChatroomPanel && (
         <ChatroomPanel
           currentUser={currentUser}
+          people={people}
           onClose={() => setShowChatroomPanel(false)}
         />
       )}
