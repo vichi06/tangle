@@ -270,7 +270,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 12px;
 }
 
 .intensity-option {
@@ -436,7 +435,7 @@
 .relation-details {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
   padding: 16px;
   background: var(--bg-tertiary);
   border-radius: 10px;
@@ -445,6 +444,25 @@
 .relation-details input {
   width: 100%;
   padding: 10px 12px;
+}
+
+/* Detail groups for separating concerns */
+.detail-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-group .detail-label {
+  margin-bottom: 0;
+}
+
+/* Date picker container - distinct styling for date controls */
+.date-picker-container {
+  background: var(--bg-primary);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
 }
 
 .confirm-btn {

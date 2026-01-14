@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import AvatarUpload from './AvatarUpload';
 import ConfirmModal from './ConfirmModal';
+import DatePicker from './DatePicker';
+import { formatDateForDisplay } from '../utils/dateUtils';
 import './UserPanel.css';
 
 const API_BASE = '/api';
@@ -333,7 +335,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
                         </p>
                         {(rel.date || rel.context) && (
                           <p className="connection-meta">
-                            {[rel.date, rel.context].filter(Boolean).join(' - ')}
+                            {[formatDateForDisplay(rel.date, true), rel.context].filter(Boolean).join(' - ')}
                           </p>
                         )}
                       </div>
@@ -397,24 +399,34 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
 
             {selectedPersonId && (
               <div className="relation-details">
-                <label className="detail-label">How far?</label>
-                <IntensityRadios
-                  value={newRelation.intensity}
-                  onChange={v => setNewRelation(r => ({ ...r, intensity: v }))}
-                />
+                <div className="detail-group">
+                  <label className="detail-label">How far?</label>
+                  <IntensityRadios
+                    value={newRelation.intensity}
+                    onChange={v => setNewRelation(r => ({ ...r, intensity: v }))}
+                  />
+                </div>
 
-                <input
-                  type="text"
-                  placeholder="When? (e.g., Summer 2023)"
-                  value={newRelation.date}
-                  onChange={e => setNewRelation(r => ({ ...r, date: e.target.value }))}
-                />
-                <input
-                  type="text"
-                  placeholder="Where/Context?"
-                  value={newRelation.context}
-                  onChange={e => setNewRelation(r => ({ ...r, context: e.target.value }))}
-                />
+                <div className="detail-group">
+                  <label className="detail-label">When?</label>
+                  <div className="date-picker-container">
+                    <DatePicker
+                      value={newRelation.date}
+                      onChange={date => setNewRelation(r => ({ ...r, date }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="detail-group">
+                  <label className="detail-label">Where/Context?</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Party at John's"
+                    value={newRelation.context}
+                    onChange={e => setNewRelation(r => ({ ...r, context: e.target.value }))}
+                  />
+                </div>
+
                 <button
                   className="confirm-btn"
                   onClick={() => addRelationship(parseInt(selectedPersonId))}
@@ -474,24 +486,33 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
             </label>
 
             <div className="relation-details">
-              <label className="detail-label">How far?</label>
-              <IntensityRadios
-                value={newRelation.intensity}
-                onChange={v => setNewRelation(r => ({ ...r, intensity: v }))}
-              />
+              <div className="detail-group">
+                <label className="detail-label">How far?</label>
+                <IntensityRadios
+                  value={newRelation.intensity}
+                  onChange={v => setNewRelation(r => ({ ...r, intensity: v }))}
+                />
+              </div>
 
-              <input
-                type="text"
-                placeholder="When? (e.g., Summer 2023)"
-                value={newRelation.date}
-                onChange={e => setNewRelation(r => ({ ...r, date: e.target.value }))}
-              />
-              <input
-                type="text"
-                placeholder="Where/Context?"
-                value={newRelation.context}
-                onChange={e => setNewRelation(r => ({ ...r, context: e.target.value }))}
-              />
+              <div className="detail-group">
+                <label className="detail-label">When?</label>
+                <div className="date-picker-container">
+                  <DatePicker
+                    value={newRelation.date}
+                    onChange={date => setNewRelation(r => ({ ...r, date }))}
+                  />
+                </div>
+              </div>
+
+              <div className="detail-group">
+                <label className="detail-label">Where/Context?</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Party at John's"
+                  value={newRelation.context}
+                  onChange={e => setNewRelation(r => ({ ...r, context: e.target.value }))}
+                />
+              </div>
             </div>
 
             <button
@@ -516,24 +537,33 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
             </p>
 
             <div className="relation-details">
-              <label className="detail-label">How far?</label>
-              <IntensityRadios
-                value={editingRelation.intensity}
-                onChange={v => setEditingRelation(r => ({ ...r, intensity: v }))}
-              />
+              <div className="detail-group">
+                <label className="detail-label">How far?</label>
+                <IntensityRadios
+                  value={editingRelation.intensity}
+                  onChange={v => setEditingRelation(r => ({ ...r, intensity: v }))}
+                />
+              </div>
 
-              <input
-                type="text"
-                placeholder="When? (e.g., Summer 2023)"
-                value={editingRelation.date}
-                onChange={e => setEditingRelation(r => ({ ...r, date: e.target.value }))}
-              />
-              <input
-                type="text"
-                placeholder="Where/Context?"
-                value={editingRelation.context}
-                onChange={e => setEditingRelation(r => ({ ...r, context: e.target.value }))}
-              />
+              <div className="detail-group">
+                <label className="detail-label">When?</label>
+                <div className="date-picker-container">
+                  <DatePicker
+                    value={editingRelation.date}
+                    onChange={date => setEditingRelation(r => ({ ...r, date }))}
+                  />
+                </div>
+              </div>
+
+              <div className="detail-group">
+                <label className="detail-label">Where/Context?</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Party at John's"
+                  value={editingRelation.context}
+                  onChange={e => setEditingRelation(r => ({ ...r, context: e.target.value }))}
+                />
+              </div>
             </div>
 
             <button
