@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { formatDateForDisplay } from '../utils/dateUtils';
 import './Tooltip.css';
 
 const INTENSITY_LABELS = {
@@ -78,18 +79,20 @@ function Tooltip({ data, position, onClose }) {
     </div>
   ) : (
     <div className="tooltip-link">
-      <p className="tooltip-link-people">
-        <span>{data.person1}</span>
+      <div className="tooltip-link-people">
+        <span className="tooltip-firstname">{data.person1FirstName}</span>
         <span className="tooltip-heart">&#9829;</span>
-        <span>{data.person2}</span>
-      </p>
+        <span className="tooltip-firstname">{data.person2FirstName}</span>
+        <span className="tooltip-lastname">{data.person1LastName}</span>
+        <span className="tooltip-lastname">{data.person2LastName}</span>
+      </div>
       {data.intensity && (
         <p className="tooltip-intensity" style={{ color: INTENSITY_COLORS[data.intensity] || INTENSITY_COLORS.kiss }}>
           {INTENSITY_LABELS[data.intensity] || data.intensity}
         </p>
       )}
       {data.date && (
-        <p className="tooltip-date">{data.date}</p>
+        <p className="tooltip-date">{formatDateForDisplay(data.date)}</p>
       )}
       {data.context && (
         <p className="tooltip-context">{data.context}</p>

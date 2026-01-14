@@ -565,8 +565,10 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         intensity: rel.intensity || 'kiss',
         date: rel.date,
         context: rel.context,
-        person1Name: `${rel.person1_first_name} ${rel.person1_last_name}`,
-        person2Name: `${rel.person2_first_name} ${rel.person2_last_name}`,
+        person1FirstName: rel.person1_first_name,
+        person1LastName: rel.person1_last_name,
+        person2FirstName: rel.person2_first_name,
+        person2LastName: rel.person2_last_name,
         isNew: !existingLinkIds.has(rel.id),
         isPending
       };
@@ -837,8 +839,10 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     const showLinkTooltip = (event, d) => {
       onShowTooltip({
         type: 'link',
-        person1: d.person1Name,
-        person2: d.person2Name,
+        person1FirstName: d.person1FirstName,
+        person1LastName: d.person1LastName,
+        person2FirstName: d.person2FirstName,
+        person2LastName: d.person2LastName,
         intensity: d.intensity,
         date: d.date,
         context: d.context
