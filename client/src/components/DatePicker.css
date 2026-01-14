@@ -1,0 +1,233 @@
+.date-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.date-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.date-picker-range-row {
+  justify-content: space-between;
+}
+
+.date-picker-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Segmented control - following Graph.css patterns */
+.date-picker .segmented-control {
+  display: flex;
+  gap: 0;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  padding: 2px;
+  flex: 1;
+}
+
+.date-picker .segmented-btn {
+  flex: 1;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.date-picker .segmented-btn:hover {
+  color: var(--text-primary);
+}
+
+.date-picker .segmented-btn.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Toggle button - following Graph.css patterns */
+.date-picker .toggle-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.date-picker .toggle-track {
+  display: block;
+  width: 36px;
+  height: 20px;
+  background: var(--border-color);
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.date-picker .toggle-btn.active .toggle-track {
+  background: #1d9bf0;
+}
+
+.date-picker .toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.date-picker .toggle-btn.active .toggle-thumb {
+  transform: translateX(16px);
+}
+
+/* Date inputs */
+.date-picker-inputs {
+  margin-top: 4px;
+}
+
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date-range-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.date-selects {
+  display: flex;
+  gap: 8px;
+}
+
+.date-select {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888888' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+}
+
+.date-select:focus {
+  border-color: var(--text-secondary);
+  outline: none;
+}
+
+.date-select.year-select {
+  flex: 0 0 90px;
+}
+
+.date-select.month-select {
+  flex: 1;
+}
+
+/* Day input (native date picker) */
+.date-input.day-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  color-scheme: dark;
+}
+
+.date-input.day-input:focus {
+  border-color: var(--text-secondary);
+  outline: none;
+}
+
+/* Range layout */
+.date-range-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.date-range-separator {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+/* Legacy text handling */
+.date-picker-legacy {
+  padding: 10px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.legacy-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.legacy-value {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.legacy-notice {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.legacy-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.legacy-keep-btn,
+.legacy-convert-btn {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.legacy-keep-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.legacy-keep-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.legacy-convert-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.legacy-convert-btn:hover {
+  border-color: var(--text-primary);
+}
