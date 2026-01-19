@@ -69,3 +69,49 @@ CREATE TABLE IF NOT EXISTS message_mentions (
 
 CREATE INDEX IF NOT EXISTS idx_mentions_user ON message_mentions(mentioned_user_id);
 CREATE INDEX IF NOT EXISTS idx_mentions_message ON message_mentions(message_id);
+
+-- Feed comments for relationship edges
+CREATE TABLE IF NOT EXISTS feed_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  relationship_id INTEGER NOT NULL,
+  sender_id INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  image TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (relationship_id) REFERENCES relationships(id) ON DELETE CASCADE,
+  FOREIGN KEY (sender_id) REFERENCES people(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_feed_comments_relationship ON feed_comments(relationship_id);
+CREATE INDEX IF NOT EXISTS idx_feed_comments_sender ON feed_comments(sender_id);
+CREATE INDEX IF NOT EXISTS idx_feed_comments_created ON feed_comments(created_at DESC);
+
+-- Votes for feed comments
+CREATE TABLE IF NOT EXISTS feed_comment_votes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  comment_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  vote INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (comment_id) REFERENCES feed_comments(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES people(id) ON DELETE CASCADE,
+  UNIQUE(comment_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_feed_comment_votes_comment ON feed_comment_votes(comment_id);
+CREATE INDEX IF NOT EXISTS idx_feed_comment_votes_user ON feed_comment_votes(user_id);
+
+-- Mentions in feed comments
+CREATE TABLE IF NOT EXISTS feed_comment_mentions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  comment_id INTEGER NOT NULL,
+  mentioned_user_id INTEGER NOT NULL,
+  seen INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (comment_id) REFERENCES feed_comments(id) ON DELETE CASCADE,
+  FOREIGN KEY (mentioned_user_id) REFERENCES people(id) ON DELETE CASCADE,
+  UNIQUE(comment_id, mentioned_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_feed_comment_mentions_user ON feed_comment_mentions(mentioned_user_id);
+CREATE INDEX IF NOT EXISTS idx_feed_comment_mentions_comment ON feed_comment_mentions(comment_id);
