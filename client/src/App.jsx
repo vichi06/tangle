@@ -5,6 +5,7 @@ import UserPanel from './components/UserPanel';
 import ChatroomPanel from './components/ChatroomPanel';
 import WelcomeModal from './components/WelcomeModal';
 import ProfileEdit from './components/ProfileEdit';
+import FeedModal from './components/FeedModal';
 import './App.css';
 
 const API_BASE = '/api';
@@ -35,6 +36,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const [newMentionsCount, setNewMentionsCount] = useState(0);
+  const [feedRelationship, setFeedRelationship] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -214,6 +216,7 @@ function App() {
         onShowTooltip={handleShowTooltip}
         onHideTooltip={handleHideTooltip}
         onRefresh={fetchData}
+        onOpenFeed={setFeedRelationship}
       />
 
       {tooltip && (
@@ -288,6 +291,15 @@ function App() {
             if (!res.ok) throw new Error('Failed to delete profile');
             fetchData();
           }}
+        />
+      )}
+
+      {feedRelationship && (
+        <FeedModal
+          relationship={feedRelationship}
+          currentUser={currentUser}
+          people={people}
+          onClose={() => setFeedRelationship(null)}
         />
       )}
 

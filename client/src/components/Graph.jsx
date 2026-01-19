@@ -480,7 +480,7 @@ function generateRevealOrder(nodes, links, startNodeId) {
   return order; // Array of waves (each wave = array of node IDs)
 }
 
-function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTooltip, onRefresh }) {
+function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTooltip, onRefresh, onOpenFeed }) {
   const svgRef = useRef(null);
   const simulationRef = useRef(null);
   const zoomRef = useRef(null);
@@ -568,8 +568,10 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         context: rel.context,
         person1FirstName: rel.person1_first_name,
         person1LastName: rel.person1_last_name,
+        person1Avatar: rel.person1_avatar,
         person2FirstName: rel.person2_first_name,
         person2LastName: rel.person2_last_name,
+        person2Avatar: rel.person2_avatar,
         isNew: !existingLinkIds.has(rel.id),
         isPending
       };
@@ -994,14 +996,32 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       }
     };
 
+    // Handle link click to open feed modal
+    const handleLinkClick = (event, d) => {
+      event.stopPropagation();
+      link.classed('highlighted', false).style('stroke', null);
+      onHideTooltip();
+      if (onOpenFeed) {
+        onOpenFeed({
+          id: d.id,
+          person1FirstName: d.person1FirstName,
+          person1LastName: d.person1LastName,
+          person1Avatar: d.person1Avatar,
+          person2FirstName: d.person2FirstName,
+          person2LastName: d.person2LastName,
+          person2Avatar: d.person2Avatar,
+          intensity: d.intensity,
+          date: d.date,
+          context: d.context
+        });
+      }
+    };
+
     if (isTouchDevice) {
-      linkHitArea.on('click', (event, d) => {
-        event.stopPropagation();
-        link.classed('highlighted', false);
-        handleLinkInteraction(event, d, true);
-      });
+      linkHitArea.on('click', handleLinkClick);
     } else {
       linkHitArea
+        .on('click', handleLinkClick)
         .on('mouseenter', (event, d) => handleLinkInteraction(event, d, true))
         .on('mouseleave', (event, d) => handleLinkInteraction(event, d, false));
     }
