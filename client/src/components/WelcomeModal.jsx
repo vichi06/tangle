@@ -27,6 +27,33 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
       return nameA.localeCompare(nameB);
     });
 
+  // Check if search returned no results
+  const noSearchResults = searchQuery.trim() && filteredPeople.length === 0;
+
+  // Parse search query into first/last name
+  const parseSearchQuery = () => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return { first_name: '', last_name: '' };
+
+    const parts = trimmed.split(/\s+/);
+    if (parts.length === 1) {
+      return { first_name: parts[0], last_name: '' };
+    }
+    // First word is first name, rest is last name
+    return {
+      first_name: parts[0],
+      last_name: parts.slice(1).join(' ')
+    };
+  };
+
+  const handleSwitchToCreate = () => {
+    if (noSearchResults) {
+      const parsed = parseSearchQuery();
+      setNewPerson(p => ({ ...p, first_name: parsed.first_name, last_name: parsed.last_name }));
+    }
+    setMode('create');
+  };
+
   const handleSelectPerson = (person) => {
     setPendingSelection(person);
     setError(null);
@@ -183,12 +210,14 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
               <p className="no-people">No one here yet. Be the first!</p>
             )}
 
-            <button
-              className="switch-mode-btn"
-              onClick={() => setMode('create')}
-            >
-              I'm not in the list - Add myself
-            </button>
+            {noSearchResults && (
+              <button
+                className="switch-mode-btn"
+                onClick={handleSwitchToCreate}
+              >
+                You're not a Tangler yet?
+              </button>
+            )}
           </>
         ) : mode === 'admin-verify' && pendingSelection ? (
           <div className="confirm-selection">
