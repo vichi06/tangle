@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import EmojiPicker from './EmojiPicker';
 import './ChatroomPanel.css';
 
 const API_BASE = '/api';
@@ -14,6 +15,7 @@ function ChatroomPanel({ currentUser, people, onClose }) {
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionIndex, setMentionIndex] = useState(0);
+  const [emojiPickerMessageId, setEmojiPickerMessageId] = useState(null);
   const messagesEndRef = useRef(null);
   const cooldownIntervalRef = useRef(null);
   const inputRef = useRef(null);
@@ -89,10 +91,14 @@ function ChatroomPanel({ currentUser, people, onClose }) {
     };
   }, [cooldown.remainingMs > 0]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom only when message count changes (new message added)
+  const prevMessageCountRef = useRef(0);
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messages.length > prevMessageCountRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMessageCountRef.current = messages.length;
+  }, [messages.length]);
 
   // Format remaining time
   const formatCooldown = (ms) => {
@@ -506,6 +512,36 @@ function ChatroomPanel({ currentUser, people, onClose }) {
     }
   };
 
+  // Handle emoji reaction
+  const handleReaction = async (messageId, emoji) => {
+    // Close picker immediately
+    setEmojiPickerMessageId(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/chatroom/${messageId}/react`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUser.id, emoji })
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to react');
+      }
+
+      const data = await res.json();
+
+      // Update message reactions in state
+      setMessages(prev => prev.map(m =>
+        m.id === messageId
+          ? { ...m, reactions: data.reactions }
+          : m
+      ));
+    } catch (err) {
+      setError('Failed to add reaction');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
   const isDisabled = !cooldown.canSend || sending;
   const placeholderText = cooldown.canSend ? "Send a message... (use @ to mention)" : "Wait for cooldown...";
 
@@ -548,27 +584,67 @@ function ChatroomPanel({ currentUser, people, onClose }) {
                   <span className="message-time">{formatTime(message.created_at)}</span>
                 </div>
                 <p className="message-text">{renderMessageContent(message.content)}</p>
-                <div className="message-votes">
-                  <button
-                    className={`vote-btn upvote ${message.userVote === 1 ? 'active' : ''}`}
-                    onClick={() => handleVote(message.id, 1)}
-                    title="Upvote"
-                  >
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                      <path d="M12 4l-8 8h5v8h6v-8h5z"/>
-                    </svg>
-                    {!!message.upvotes && <span>{message.upvotes}</span>}
-                  </button>
-                  <button
-                    className={`vote-btn downvote ${message.userVote === -1 ? 'active' : ''}`}
-                    onClick={() => handleVote(message.id, -1)}
-                    title="Downvote"
-                  >
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                      <path d="M12 20l8-8h-5v-8h-6v8h-5z"/>
-                    </svg>
-                    {!!message.downvotes && <span>{message.downvotes}</span>}
-                  </button>
+                {/* Reactions display */}
+                {message.reactions && message.reactions.length > 0 && (
+                  <div className="message-reactions">
+                    {message.reactions.map(reaction => (
+                      <button
+                        key={reaction.emoji}
+                        className={`reaction-badge ${reaction.reacted ? 'reacted' : ''}`}
+                        onClick={() => handleReaction(message.id, reaction.emoji)}
+                        title={`${reaction.count} ${reaction.count === 1 ? 'person' : 'people'} reacted`}
+                      >
+                        <span className="reaction-emoji">{reaction.emoji}</span>
+                        <span className="reaction-count">{reaction.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="message-actions">
+                  <div className="message-votes">
+                    <button
+                      className={`vote-btn upvote ${message.userVote === 1 ? 'active' : ''}`}
+                      onClick={() => handleVote(message.id, 1)}
+                      title="Upvote"
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M12 4l-8 8h5v8h6v-8h5z"/>
+                      </svg>
+                      {!!message.upvotes && <span>{message.upvotes}</span>}
+                    </button>
+                    <button
+                      className={`vote-btn downvote ${message.userVote === -1 ? 'active' : ''}`}
+                      onClick={() => handleVote(message.id, -1)}
+                      title="Downvote"
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M12 20l8-8h-5v-8h-6v8h-5z"/>
+                      </svg>
+                      {!!message.downvotes && <span>{message.downvotes}</span>}
+                    </button>
+                  </div>
+
+                  <div className="reaction-picker-wrapper">
+                    <button
+                      className="reaction-btn"
+                      onClick={() => setEmojiPickerMessageId(
+                        emojiPickerMessageId === message.id ? null : message.id
+                      )}
+                      title="Add reaction"
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-6c.78 2.34 2.72 4 5 4s4.22-1.66 5-4H7zm8-4c.55 0 1-.45 1-1s-.45-1-1-1-1 .45-1 1 .45 1 1 1zm-6 0c.55 0 1-.45 1-1s-.45-1-1-1-1 .45-1 1 .45 1 1 1z"/>
+                      </svg>
+                    </button>
+                    {emojiPickerMessageId === message.id && (
+                      <EmojiPicker
+                        onSelect={(emoji) => handleReaction(message.id, emoji)}
+                        onClose={() => setEmojiPickerMessageId(null)}
+                        position="top"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
