@@ -185,6 +185,91 @@
   font-weight: 500;
 }
 
+/* Message actions row */
+.message-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.message-actions .message-votes {
+  margin-top: 0;
+}
+
+/* Reactions display */
+.message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.reaction-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.reaction-badge:hover {
+  background: var(--bg-primary);
+  border-color: var(--text-muted);
+}
+
+.reaction-badge.reacted {
+  background: rgba(92, 154, 255, 0.15);
+  border-color: #5c9aff;
+}
+
+.reaction-emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.reaction-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.reaction-badge.reacted .reaction-count {
+  color: #5c9aff;
+}
+
+/* Reaction picker button */
+.reaction-picker-wrapper {
+  position: relative;
+}
+
+.reaction-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.reaction-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.reaction-btn svg {
+  flex-shrink: 0;
+}
+
 /* Input form */
 .message-form {
   padding: 16px;

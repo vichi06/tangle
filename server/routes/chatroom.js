@@ -6,7 +6,7 @@ const router = express.Router();
 const COOLDOWN_MINUTES = 30;
 const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
 
-// Get all ideas with sender info and vote counts
+// Get all ideas with sender info, vote counts, and reactions
 router.get('/', (req, res) => {
   const userId = req.query.userId;
   try {
@@ -25,6 +25,28 @@ router.get('/', (req, res) => {
       ORDER BY i.created_at ASC
     `).all();
 
+    // Get all reactions grouped by message
+    const allReactions = db.prepare(`
+      SELECT message_id, emoji, COUNT(*) as count, GROUP_CONCAT(user_id) as user_ids
+      FROM message_reactions
+      GROUP BY message_id, emoji
+    `).all();
+
+    // Build reactions map by message_id
+    const reactionsMap = {};
+    allReactions.forEach(r => {
+      if (!reactionsMap[r.message_id]) {
+        reactionsMap[r.message_id] = [];
+      }
+      const userIds = r.user_ids.split(',').map(Number);
+      reactionsMap[r.message_id].push({
+        emoji: r.emoji,
+        count: r.count,
+        user_ids: userIds,
+        reacted: userId ? userIds.includes(parseInt(userId)) : false
+      });
+    });
+
     // If userId provided, get user's votes
     if (userId) {
       const userVotes = db.prepare(`
@@ -35,6 +57,11 @@ router.get('/', (req, res) => {
         idea.userVote = voteMap[idea.id] || 0;
       });
     }
+
+    // Add reactions to each idea
+    ideas.forEach(idea => {
+      idea.reactions = reactionsMap[idea.id] || [];
+    });
 
     res.json(ideas);
   } catch (err) {
@@ -211,6 +238,69 @@ router.post('/mentions/mark-seen/:userId', (req, res) => {
     `).run(userId);
 
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add/remove emoji reaction to a message
+router.post('/:messageId/react', (req, res) => {
+  const { messageId } = req.params;
+  const { user_id, emoji } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+
+  if (!emoji) {
+    return res.status(400).json({ error: 'Emoji is required' });
+  }
+
+  try {
+    // Verify message exists
+    const message = db.prepare('SELECT id FROM ideas WHERE id = ?').get(messageId);
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Verify user exists
+    const user = db.prepare('SELECT id FROM people WHERE id = ?').get(user_id);
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+
+    // Check if reaction exists (toggle behavior)
+    const existing = db.prepare(
+      'SELECT id FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?'
+    ).get(messageId, user_id, emoji);
+
+    if (existing) {
+      // Remove reaction
+      db.prepare('DELETE FROM message_reactions WHERE id = ?').run(existing.id);
+    } else {
+      // Add reaction
+      db.prepare(
+        'INSERT INTO message_reactions (message_id, user_id, emoji) VALUES (?, ?, ?)'
+      ).run(messageId, user_id, emoji);
+    }
+
+    // Return updated reactions for this message
+    const reactions = db.prepare(`
+      SELECT emoji, COUNT(*) as count, GROUP_CONCAT(user_id) as user_ids
+      FROM message_reactions
+      WHERE message_id = ?
+      GROUP BY emoji
+    `).all(messageId);
+
+    res.json({
+      message_id: parseInt(messageId),
+      reactions: reactions.map(r => ({
+        emoji: r.emoji,
+        count: r.count,
+        user_ids: r.user_ids.split(',').map(Number),
+        reacted: r.user_ids.split(',').map(Number).includes(user_id)
+      }))
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
