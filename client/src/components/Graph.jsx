@@ -480,7 +480,7 @@ function generateRevealOrder(nodes, links, startNodeId) {
   return order; // Array of waves (each wave = array of node IDs)
 }
 
-function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTooltip, onRefresh, onOpenFeed }) {
+function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTooltip, onRefresh, onOpenFeed, onNodeClick }) {
   const svgRef = useRef(null);
   const simulationRef = useRef(null);
   const zoomRef = useRef(null);
@@ -1301,16 +1301,22 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       }
     };
 
+    // Node click handler - opens profile feed modal
+    const handleNodeClick = (event, d) => {
+      event.stopPropagation();
+      node.classed('highlighted', false);
+      link.classed('connected dimmed', false);
+      onHideTooltip();
+      if (onNodeClick) {
+        onNodeClick(d.id);
+      }
+    };
+
     if (isTouchDevice) {
-      node.on('click', (event, d) => {
-        event.stopPropagation();
-        node.classed('highlighted', false);
-        link.classed('connected dimmed', false);
-        highlightNode(d, true);
-        showNodeTooltip(event, d);
-      });
+      node.on('click', handleNodeClick);
     } else {
       node
+        .on('click', handleNodeClick)
         .on('mouseenter', (event, d) => {
           highlightNode(d, true);
           showNodeTooltip(event, d);
@@ -1452,7 +1458,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       window.removeEventListener('resize', handleResize);
       // Note: Don't stop simulation here as it's reused across renders
     };
-  }, [graphData, currentUserId, onShowTooltip, onHideTooltip, visibleNodeIds]);
+  }, [graphData, currentUserId, onShowTooltip, onHideTooltip, onNodeClick, visibleNodeIds]);
 
   return (
     <div className="graph-container">

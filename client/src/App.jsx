@@ -6,6 +6,7 @@ import ChatroomPanel from './components/ChatroomPanel';
 import WelcomeModal from './components/WelcomeModal';
 import ProfileEdit from './components/ProfileEdit';
 import FeedModal from './components/FeedModal';
+import ProfileFeedModal from './components/ProfileFeedModal';
 import './App.css';
 
 const API_BASE = '/api';
@@ -37,6 +38,7 @@ function App() {
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const [newMentionsCount, setNewMentionsCount] = useState(0);
   const [feedRelationship, setFeedRelationship] = useState(null);
+  const [selectedProfileId, setSelectedProfileId] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -217,6 +219,7 @@ function App() {
         onHideTooltip={handleHideTooltip}
         onRefresh={fetchData}
         onOpenFeed={setFeedRelationship}
+        onNodeClick={setSelectedProfileId}
       />
 
       {tooltip && (
@@ -300,6 +303,27 @@ function App() {
           currentUser={currentUser}
           people={people}
           onClose={() => setFeedRelationship(null)}
+        />
+      )}
+
+      {selectedProfileId && (
+        <ProfileFeedModal
+          profileId={selectedProfileId}
+          currentUser={currentUser}
+          people={people}
+          onClose={() => setSelectedProfileId(null)}
+          onRelationshipClick={(rel) => {
+            setSelectedProfileId(null);
+            setFeedRelationship({
+              ...rel,
+              person1FirstName: rel.person1_first_name,
+              person1LastName: rel.person1_last_name,
+              person1Avatar: rel.person1_avatar,
+              person2FirstName: rel.person2_first_name,
+              person2LastName: rel.person2_last_name,
+              person2Avatar: rel.person2_avatar
+            });
+          }}
         />
       )}
 

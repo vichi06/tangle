@@ -11,6 +11,7 @@ import relationshipsRoutes from './routes/relationships.js';
 import importExportRoutes from './routes/import-export.js';
 import chatroomRoutes from './routes/chatroom.js';
 import feedRoutes from './routes/feed.js';
+import profileFeedRoutes from './routes/profileFeed.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,6 +28,7 @@ app.use('/api/people', peopleRoutes);
 app.use('/api/relationships', relationshipsRoutes);
 app.use('/api/chatroom', chatroomRoutes);
 app.use('/api/feed', feedRoutes);
+app.use('/api/profile-feed', profileFeedRoutes);
 app.use('/api', importExportRoutes);
 
 // Serve static files in production
