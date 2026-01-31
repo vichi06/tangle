@@ -33,6 +33,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmDeleteProfile, setConfirmDeleteProfile] = useState(false);
   const [invitePerson, setInvitePerson] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // The user whose relationships we're managing (admin can change this)
   const managedUser = useMemo(() => {
@@ -56,12 +57,36 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
     }).sort((a, b) => (intensityOrder[a.intensity] ?? 0) - (intensityOrder[b.intensity] ?? 0));
   }, [relationships, managedUser.id]);
 
+  // Split into accepted, pending incoming, and pending outgoing
+  const acceptedRelationships = useMemo(() =>
+    myRelationships.filter(r => !r.is_pending),
+    [myRelationships]
+  );
+
+  const pendingIncoming = useMemo(() =>
+    myRelationships.filter(r => r.is_pending && r.pending_by !== managedUser.id),
+    [myRelationships, managedUser.id]
+  );
+
+  const pendingOutgoing = useMemo(() =>
+    myRelationships.filter(r => r.is_pending && r.pending_by === managedUser.id),
+    [myRelationships, managedUser.id]
+  );
+
   // People not yet connected to managed user
   const availablePeople = useMemo(() => {
     const connectedIds = new Set(myRelationships.map(r => r.partnerId));
     connectedIds.add(managedUser.id);
     return people.filter(p => !connectedIds.has(p.id));
   }, [people, myRelationships, managedUser.id]);
+
+  const filteredPeople = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase().trim();
+    return availablePeople.filter(p =>
+      `${p.first_name} ${p.last_name}`.toLowerCase().includes(q)
+    );
+  }, [availablePeople, searchQuery]);
 
   const showMessage = (text, isError = false) => {
     setMessage({ text, isError });
@@ -80,7 +105,8 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
           person2_id: personId,
           intensity: newRelation.intensity,
           date: newRelation.date || null,
-          context: newRelation.context || null
+          context: newRelation.context || null,
+          requester_id: managedUser.id
         })
       });
 
@@ -93,7 +119,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
       setSelectedPersonId('');
       setMode('list');
       onDataChange();
-      showMessage('Relationship added');
+      showMessage('Relationship request sent');
     } catch (err) {
       showMessage(err.message, true);
     } finally {
@@ -128,7 +154,8 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
           person2_id: createdPerson.id,
           intensity: newRelation.intensity,
           date: newRelation.date || null,
-          context: newRelation.context || null
+          context: newRelation.context || null,
+          requester_id: managedUser.id
         })
       });
 
@@ -158,6 +185,41 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
     } finally {
       setLoading(false);
       setConfirmDelete(null);
+    }
+  };
+
+  const acceptRelationship = async (relId) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/relationships/${relId}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: managedUser.id })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to accept');
+      }
+      onDataChange();
+      showMessage('Relationship accepted');
+    } catch (err) {
+      showMessage(err.message, true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const declineRelationship = async (relId) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/relationships/${relId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to decline');
+      onDataChange();
+      showMessage('Relationship declined');
+    } catch (err) {
+      showMessage(err.message, true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -315,10 +377,88 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
         {mode === 'list' && (
           <>
             <div className="my-connections">
-              {myRelationships.length === 0 ? (
+              {pendingIncoming.length > 0 && (
+                <div className="pending-section">
+                  <h4 className="pending-section-title">Pending Requests</h4>
+                  {pendingIncoming.map(rel => (
+                    <div key={rel.id} className="connection-item pending-item">
+                      <div className="connection-info">
+                        {rel.partnerAvatar ? (
+                          <img src={rel.partnerAvatar} alt="" className="connection-avatar" />
+                        ) : (
+                          <div className="connection-avatar-placeholder">
+                            {rel.partnerFirstName.charAt(0)}
+                          </div>
+                        )}
+                        <div>
+                          <strong>{rel.partnerFirstName} {rel.partnerLastName}</strong>
+                          <p className="connection-intensity">
+                            <span className={`intensity-dot intensity-${rel.intensity || 'kiss'}`} />
+                            {INTENSITY_LABELS[rel.intensity] || 'Kiss'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="item-actions">
+                        <button
+                          className="confirm-btn"
+                          onClick={() => acceptRelationship(rel.id)}
+                          disabled={loading}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          className="remove-btn"
+                          onClick={() => declineRelationship(rel.id)}
+                          disabled={loading}
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {pendingOutgoing.length > 0 && (
+                <div className="pending-section">
+                  <h4 className="pending-section-title">Awaiting Response</h4>
+                  {pendingOutgoing.map(rel => (
+                    <div key={rel.id} className="connection-item pending-item">
+                      <div className="connection-info">
+                        {rel.partnerAvatar ? (
+                          <img src={rel.partnerAvatar} alt="" className="connection-avatar" />
+                        ) : (
+                          <div className="connection-avatar-placeholder">
+                            {rel.partnerFirstName.charAt(0)}
+                          </div>
+                        )}
+                        <div>
+                          <strong>{rel.partnerFirstName} {rel.partnerLastName}</strong>
+                          <p className="connection-intensity">
+                            <span className={`intensity-dot intensity-${rel.intensity || 'kiss'}`} />
+                            {INTENSITY_LABELS[rel.intensity] || 'Kiss'}
+                          </p>
+                          <p className="connection-meta pending-label">Pending...</p>
+                        </div>
+                      </div>
+                      <div className="item-actions">
+                        <button
+                          className="remove-btn"
+                          onClick={() => setConfirmDelete(rel.id)}
+                          disabled={loading}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {acceptedRelationships.length === 0 && pendingIncoming.length === 0 && pendingOutgoing.length === 0 ? (
                 <p className="no-connections">No relations yet</p>
               ) : (
-                myRelationships.map(rel => (
+                acceptedRelationships.map(rel => (
                   <div key={rel.id} className="connection-item">
                     <div className="connection-info">
                       {rel.partnerAvatar ? (
@@ -364,7 +504,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
 
             <button
               className="add-connection-btn"
-              onClick={() => setMode('add')}
+              onClick={() => { setSearchQuery(''); setSelectedPersonId(''); setMode('add'); }}
             >
               + Add a relation
             </button>
@@ -375,28 +515,48 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
           <div className="add-connection">
             <h3>Add a relation</h3>
 
-            {availablePeople.length > 0 && (
-              <div className="person-select">
-                <select
-                  value={selectedPersonId}
-                  onChange={e => setSelectedPersonId(e.target.value)}
-                >
-                  <option value="">Select a person</option>
-                  {availablePeople.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.first_name} {p.last_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <button
-              className="create-new-btn"
-              onClick={() => setMode('create')}
-            >
-              + Add new person
-            </button>
+            <div className="person-search">
+              <input
+                type="text"
+                placeholder="Search for a person..."
+                value={searchQuery}
+                onChange={e => { setSearchQuery(e.target.value); setSelectedPersonId(''); }}
+                autoFocus
+              />
+              {searchQuery.trim() && (
+                <div className="search-results">
+                  {filteredPeople.length > 0 ? (
+                    filteredPeople.map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`search-result-item ${selectedPersonId === String(p.id) ? 'selected' : ''}`}
+                        onClick={() => { setSelectedPersonId(String(p.id)); setSearchQuery(`${p.first_name} ${p.last_name}`); }}
+                      >
+                        {p.avatar ? (
+                          <img src={p.avatar} alt="" className="connection-avatar" style={{ width: 32, height: 32 }} />
+                        ) : (
+                          <div className="connection-avatar-placeholder" style={{ width: 32, height: 32, fontSize: 14 }}>
+                            {p.first_name.charAt(0)}
+                          </div>
+                        )}
+                        <span>{p.first_name} {p.last_name}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="no-search-results">
+                      <p>No one found</p>
+                      <button
+                        className="create-new-btn"
+                        onClick={() => setMode('create')}
+                      >
+                        + Add new tangler
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {selectedPersonId && (
               <div className="relation-details">

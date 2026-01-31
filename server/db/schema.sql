@@ -18,9 +18,12 @@ CREATE TABLE IF NOT EXISTS relationships (
   intensity TEXT DEFAULT 'kiss',
   date TEXT,
   context TEXT,
+  is_pending INTEGER DEFAULT 0,
+  pending_by INTEGER,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (person1_id) REFERENCES people(id) ON DELETE CASCADE,
   FOREIGN KEY (person2_id) REFERENCES people(id) ON DELETE CASCADE,
+  FOREIGN KEY (pending_by) REFERENCES people(id) ON DELETE SET NULL,
   UNIQUE(person1_id, person2_id)
 );
 

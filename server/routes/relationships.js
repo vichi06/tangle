@@ -28,7 +28,7 @@ router.get('/', (req, res) => {
 
 // Create relationship
 router.post('/', (req, res) => {
-  const { person1_id, person2_id, intensity, date, context } = req.body;
+  const { person1_id, person2_id, intensity, date, context, requester_id } = req.body;
 
   if (!person1_id || !person2_id) {
     return res.status(400).json({ error: 'Both person IDs are required' });
@@ -45,8 +45,8 @@ router.post('/', (req, res) => {
 
   try {
     // Check if people exist
-    const person1 = db.prepare('SELECT id FROM people WHERE id = ?').get(p1);
-    const person2 = db.prepare('SELECT id FROM people WHERE id = ?').get(p2);
+    const person1 = db.prepare('SELECT id, is_pending FROM people WHERE id = ?').get(p1);
+    const person2 = db.prepare('SELECT id, is_pending FROM people WHERE id = ?').get(p2);
 
     if (!person1 || !person2) {
       return res.status(400).json({ error: 'One or both people not found' });
@@ -61,10 +61,16 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'Relationship already exists' });
     }
 
+    // Determine pending status: if either person is pending (invited), skip relationship pending
+    // (they'll confirm their profile first). Otherwise, mark relationship as pending.
+    const eitherPersonPending = !!(person1.is_pending || person2.is_pending);
+    const isPending = eitherPersonPending ? 0 : 1;
+    const pendingBy = isPending ? (requester_id || person1_id) : null;
+
     const stmt = db.prepare(
-      'INSERT INTO relationships (person1_id, person2_id, intensity, date, context) VALUES (?, ?, ?, ?, ?)'
+      'INSERT INTO relationships (person1_id, person2_id, intensity, date, context, is_pending, pending_by) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
-    const result = stmt.run(p1, p2, intensity || 'kiss', date || null, context || null);
+    const result = stmt.run(p1, p2, intensity || 'kiss', date || null, context || null, isPending, pendingBy);
 
     const relationship = db.prepare(`
       SELECT
@@ -85,6 +91,70 @@ router.post('/', (req, res) => {
     try {
       const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
       if (bot) {
+        const msg = isPending
+          ? `⏳ ${relationship.person1_first_name} and ${relationship.person2_first_name} have a pending connection!`
+          : `🎉 ${relationship.person1_first_name} and ${relationship.person2_first_name} are now connected!`;
+        db.prepare('INSERT INTO ideas (sender_id, content) VALUES (?, ?)').run(bot.id, msg);
+      }
+    } catch (botErr) {
+      console.error('Failed to insert bot message:', botErr);
+    }
+
+    res.status(201).json(relationship);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Accept pending relationship
+router.post('/:id/accept', (req, res) => {
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({ error: 'user_id is required' });
+  }
+
+  try {
+    const existing = db.prepare('SELECT * FROM relationships WHERE id = ?').get(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Relationship not found' });
+    }
+
+    if (!existing.is_pending) {
+      return res.status(400).json({ error: 'Relationship is not pending' });
+    }
+
+    // Only the other person (not the requester) can accept
+    if (existing.pending_by === user_id) {
+      return res.status(403).json({ error: 'Cannot accept your own request' });
+    }
+
+    // Verify user is part of this relationship
+    if (existing.person1_id !== user_id && existing.person2_id !== user_id) {
+      return res.status(403).json({ error: 'You are not part of this relationship' });
+    }
+
+    db.prepare('UPDATE relationships SET is_pending = 0, pending_by = NULL WHERE id = ?').run(req.params.id);
+
+    const relationship = db.prepare(`
+      SELECT
+        r.*,
+        p1.first_name as person1_first_name,
+        p1.last_name as person1_last_name,
+        p1.avatar as person1_avatar,
+        p2.first_name as person2_first_name,
+        p2.last_name as person2_last_name,
+        p2.avatar as person2_avatar
+      FROM relationships r
+      JOIN people p1 ON r.person1_id = p1.id
+      JOIN people p2 ON r.person2_id = p2.id
+      WHERE r.id = ?
+    `).get(req.params.id);
+
+    // Insert TanTan bot system message
+    try {
+      const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
+      if (bot) {
         db.prepare('INSERT INTO ideas (sender_id, content) VALUES (?, ?)').run(
           bot.id,
           `🎉 ${relationship.person1_first_name} and ${relationship.person2_first_name} are now connected!`
@@ -94,7 +164,7 @@ router.post('/', (req, res) => {
       console.error('Failed to insert bot message:', botErr);
     }
 
-    res.status(201).json(relationship);
+    res.json(relationship);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
