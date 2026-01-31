@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { formatDateForDisplay } from '../utils/dateUtils';
 import './FeedModal.css';
 
 const API_BASE = '/api';
@@ -133,12 +134,7 @@ function FeedModal({ relationship, currentUser, people, onClose }) {
   // Format date for header
   const formatDate = (dateStr) => {
     if (!dateStr) return null;
-    const date = new Date(dateStr);
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    return formatDateForDisplay(dateStr, true) || null;
   };
 
   // Filter people for mention autocomplete
@@ -586,7 +582,7 @@ function FeedModal({ relationship, currentUser, people, onClose }) {
                   </div>
                 )}
                 <span className="feed-person-name">
-                  {relationship.person1FirstName} {relationship.person1LastName}
+                  {relationship.person1FirstName}
                 </span>
               </div>
               <div
@@ -604,7 +600,7 @@ function FeedModal({ relationship, currentUser, people, onClose }) {
                   </div>
                 )}
                 <span className="feed-person-name">
-                  {relationship.person2FirstName} {relationship.person2LastName}
+                  {relationship.person2FirstName}
                 </span>
               </div>
             </div>

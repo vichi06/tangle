@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { person1_id, person2_id, intensity, date, context } = req.body;
+      const { person1_id, person2_id, intensity, date, context, requester_id } = req.body;
 
       if (!person1_id || !person2_id) {
         return res.status(400).json({ error: 'Both person IDs are required' });
@@ -45,8 +45,8 @@ export default async function handler(req, res) {
         : [person2_id, person1_id];
 
       // Check if people exist
-      const person1 = await db.execute({ sql: 'SELECT id FROM people WHERE id = ?', args: [p1] });
-      const person2 = await db.execute({ sql: 'SELECT id FROM people WHERE id = ?', args: [p2] });
+      const person1 = await db.execute({ sql: 'SELECT id, is_pending FROM people WHERE id = ?', args: [p1] });
+      const person2 = await db.execute({ sql: 'SELECT id, is_pending FROM people WHERE id = ?', args: [p2] });
 
       if (person1.rows.length === 0 || person2.rows.length === 0) {
         return res.status(400).json({ error: 'One or both people not found' });
@@ -62,9 +62,14 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Relationship already exists' });
       }
 
+      // Determine pending status: if either person is pending (invited), skip relationship pending
+      const eitherPersonPending = !!(person1.rows[0].is_pending || person2.rows[0].is_pending);
+      const isPending = eitherPersonPending ? 0 : 1;
+      const pendingBy = isPending ? (requester_id || person1_id) : null;
+
       const result = await db.execute({
-        sql: 'INSERT INTO relationships (person1_id, person2_id, intensity, date, context) VALUES (?, ?, ?, ?, ?)',
-        args: [p1, p2, intensity || 'kiss', date || null, context || null]
+        sql: 'INSERT INTO relationships (person1_id, person2_id, intensity, date, context, is_pending, pending_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        args: [p1, p2, intensity || 'kiss', date || null, context || null, isPending, pendingBy]
       });
 
       const relationship = await db.execute({
@@ -90,12 +95,12 @@ export default async function handler(req, res) {
         const botResult = await db.execute("SELECT id FROM people WHERE is_system = 1");
         if (botResult.rows.length > 0) {
           const rel = relationship.rows[0];
+          const msg = isPending
+            ? `⏳ ${rel.person1_first_name} and ${rel.person2_first_name} have a pending connection!`
+            : `🎉 ${rel.person1_first_name} and ${rel.person2_first_name} are now connected!`;
           await db.execute({
             sql: 'INSERT INTO ideas (sender_id, content) VALUES (?, ?)',
-            args: [
-              botResult.rows[0].id,
-              `🎉 ${rel.person1_first_name} and ${rel.person2_first_name} are now connected!`
-            ]
+            args: [botResult.rows[0].id, msg]
           });
         }
       } catch (botErr) {

@@ -557,7 +557,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     const links = relationships.map(rel => {
       const person1 = peopleMap.get(rel.person1_id);
       const person2 = peopleMap.get(rel.person2_id);
-      const isPending = !!(person1?.is_pending || person2?.is_pending);
+      const isPending = !!(person1?.is_pending || person2?.is_pending || rel.is_pending);
       return {
         id: rel.id,
         source: rel.person1_id,
@@ -1094,8 +1094,8 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
           .attr('class', 'node-initial')
           .attr('text-anchor', 'middle')
           .attr('dominant-baseline', 'central')
-          .attr('font-size', d.size * 0.4)
-          .text(d.firstName.charAt(0).toUpperCase());
+          .attr('font-size', d.size * 0.35)
+          .text(d.firstName.charAt(0).toUpperCase() + (d.lastName ? d.lastName.charAt(0).toUpperCase() : ''));
       }
 
       // Border
@@ -1218,7 +1218,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       scaleGroup.select('text.node-initial')
         .transition()
         .duration(500)
-        .attr('font-size', d.size * 0.4);
+        .attr('font-size', d.size * 0.35);
     });
 
     // Calculate BFS distances from a node
