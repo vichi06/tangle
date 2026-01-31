@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS people (
   is_admin INTEGER DEFAULT 0,
   admin_code TEXT,
   is_pending INTEGER DEFAULT 0,
+  is_system INTEGER DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

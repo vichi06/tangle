@@ -445,3 +445,24 @@
   color: #ff6b6b;
   background: rgba(255, 107, 107, 0.15);
 }
+
+/* System (bot) messages */
+.message-item.system-message {
+  background: rgba(92, 154, 255, 0.06);
+  border: 1px solid rgba(92, 154, 255, 0.15);
+}
+
+.message-item.system-message .system-avatar {
+  background: rgba(92, 154, 255, 0.15);
+  font-size: 18px;
+  line-height: 36px;
+}
+
+.message-item.system-message .system-sender {
+  color: #5c9aff;
+}
+
+.message-item.system-message .message-text {
+  color: var(--text-muted);
+  font-style: italic;
+}

@@ -81,6 +81,19 @@ router.post('/', (req, res) => {
       WHERE r.id = ?
     `).get(result.lastInsertRowid);
 
+    // Insert TanTan bot system message
+    try {
+      const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
+      if (bot) {
+        db.prepare('INSERT INTO ideas (sender_id, content) VALUES (?, ?)').run(
+          bot.id,
+          `🎉 ${relationship.person1_first_name} and ${relationship.person2_first_name} are now connected!`
+        );
+      }
+    } catch (botErr) {
+      console.error('Failed to insert bot message:', botErr);
+    }
+
     res.status(201).json(relationship);
   } catch (err) {
     res.status(500).json({ error: err.message });
