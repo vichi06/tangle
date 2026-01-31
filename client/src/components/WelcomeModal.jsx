@@ -6,7 +6,7 @@ const API_BASE = '/api';
 
 function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
   const [mode, setMode] = useState('select'); // 'select', 'create', 'admin-verify', or 'confirm'
-  const [newPerson, setNewPerson] = useState({ first_name: '', last_name: '', bio: '', avatar: '', is_external: false });
+  const [newPerson, setNewPerson] = useState({ first_name: '', last_name: '', bio: '', avatar: '' });
   const [pendingSelection, setPendingSelection] = useState(null);
   const [codeDigits, setCodeDigits] = useState(['', '', '', '']);
   const [verifying, setVerifying] = useState(false);
@@ -360,15 +360,6 @@ function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
                 size={100}
               />
             </div>
-
-            <label className="external-checkbox">
-              <input
-                type="checkbox"
-                checked={newPerson.is_external}
-                onChange={e => setNewPerson(p => ({ ...p, is_external: e.target.checked }))}
-              />
-              <span>External to the group</span>
-            </label>
 
             {error && <p className="error-message">{error}</p>}
 

@@ -568,9 +568,6 @@ function ProfileFeedModal({ profileId, currentUser, people, onClose, onRelations
               {profile.bio && (
                 <p className="profile-feed-bio">{profile.bio}</p>
               )}
-              {!!profile.is_external && (
-                <span className="profile-feed-badge external">External</span>
-              )}
             </div>
           </div>
           <button className="profile-feed-close-btn" onClick={onClose}>×</button>

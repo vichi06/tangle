@@ -26,7 +26,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
   const [managedUserId, setManagedUserId] = useState(currentUser.id);
   const [selectedPersonId, setSelectedPersonId] = useState('');
   const [newRelation, setNewRelation] = useState({ intensity: 'kiss', date: '', context: '' });
-  const [newPerson, setNewPerson] = useState({ first_name: '', last_name: '', bio: '', avatar: '', is_external: false });
+  const [newPerson, setNewPerson] = useState({ first_name: '', last_name: '', bio: '', avatar: '' });
   const [editingRelation, setEditingRelation] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
@@ -134,7 +134,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
 
       if (!relRes.ok) throw new Error('Failed to create relationship');
 
-      setNewPerson({ first_name: '', last_name: '', bio: '', avatar: '', is_external: false });
+      setNewPerson({ first_name: '', last_name: '', bio: '', avatar: '' });
       setNewRelation({ intensity: 'kiss', date: '', context: '' });
       setMode('list');
       onDataChange();
@@ -468,15 +468,6 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
               value={newPerson.bio}
               onChange={e => setNewPerson(p => ({ ...p, bio: e.target.value }))}
             />
-
-            <label className="external-checkbox">
-              <input
-                type="checkbox"
-                checked={newPerson.is_external}
-                onChange={e => setNewPerson(p => ({ ...p, is_external: e.target.checked }))}
-              />
-              <span>External to the group</span>
-            </label>
 
             <div className="relation-details">
               <div className="detail-group">

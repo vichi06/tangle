@@ -116,30 +116,6 @@
   color: var(--text-muted);
 }
 
-/* External checkbox */
-.profile-form .external-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.profile-form .external-checkbox:hover {
-  color: var(--text-secondary);
-}
-
-.profile-form .external-checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  background: transparent;
-  border: none;
-  accent-color: var(--text-muted);
-  cursor: pointer;
-}
-
 /* Delete profile button */
 .delete-profile-btn {
   width: 100%;

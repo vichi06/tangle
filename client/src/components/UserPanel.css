@@ -544,26 +544,3 @@
   resize: vertical;
 }
 
-/* External checkbox */
-.external-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.external-checkbox:hover {
-  color: var(--text-secondary);
-}
-
-.external-checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  background: transparent;
-  border: none;
-  accent-color: var(--text-muted);
-  cursor: pointer;
-}
