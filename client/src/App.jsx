@@ -137,8 +137,8 @@ function App() {
 
     try {
       const url = lastSeen
-        ? `${API_BASE}/chatroom/new-count/${currentUser.id}?since=${encodeURIComponent(lastSeen)}`
-        : `${API_BASE}/chatroom/new-count/${currentUser.id}`;
+        ? `${API_BASE}/chatroom/user/${currentUser.id}?action=new-count&since=${encodeURIComponent(lastSeen)}`
+        : `${API_BASE}/chatroom/user/${currentUser.id}?action=new-count`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -154,7 +154,7 @@ function App() {
     if (!currentUser) return;
 
     try {
-      const res = await fetch(`${API_BASE}/chatroom/mentions/count/${currentUser.id}`);
+      const res = await fetch(`${API_BASE}/chatroom/user/${currentUser.id}?action=mentions-count`);
       if (res.ok) {
         const data = await res.json();
         setNewMentionsCount(data.count);
@@ -190,8 +190,10 @@ function App() {
       // Mark mentions as seen
       if (currentUser && newMentionsCount > 0) {
         try {
-          await fetch(`${API_BASE}/chatroom/mentions/mark-seen/${currentUser.id}`, {
-            method: 'POST'
+          await fetch(`${API_BASE}/chatroom/user/${currentUser.id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'mark-seen' })
           });
           setNewMentionsCount(0);
         } catch (err) {
