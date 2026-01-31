@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import AvatarUpload from './AvatarUpload';
 import ConfirmModal from './ConfirmModal';
+import InviteModal from './InviteModal';
 import DatePicker from './DatePicker';
 import { formatDateForDisplay } from '../utils/dateUtils';
 import './UserPanel.css';
@@ -32,6 +33,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
   const [message, setMessage] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmDeleteProfile, setConfirmDeleteProfile] = useState(false);
+  const [invitePerson, setInvitePerson] = useState(null);
 
   // The user whose relationships we're managing (admin can change this)
   const managedUser = useMemo(() => {
@@ -137,7 +139,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
       setNewRelation({ intensity: 'kiss', date: '', context: '' });
       setMode('list');
       onDataChange();
-      showMessage(`Added ${createdPerson.first_name} and linked`);
+      setInvitePerson(createdPerson);
     } catch (err) {
       showMessage(err.message, true);
     } finally {
@@ -594,6 +596,13 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
           message={`Delete ${managedUser.first_name} ${managedUser.last_name}'s profile? This will remove them and all their connections.`}
           onConfirm={deleteProfile}
           onCancel={() => setConfirmDeleteProfile(false)}
+        />
+      )}
+
+      {invitePerson && (
+        <InviteModal
+          person={invitePerson}
+          onClose={() => setInvitePerson(null)}
         />
       )}
     </div>
