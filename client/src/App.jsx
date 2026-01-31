@@ -76,6 +76,11 @@ function App() {
         const savedUser = people.find(p => p.id === parseInt(savedUserId));
         if (savedUser) {
           setCurrentUser(savedUser);
+          // Clear invite param if user is already logged in
+          const params = new URLSearchParams(window.location.search);
+          if (params.has('invite')) {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
         }
       }
       setUserChecked(true);
@@ -198,13 +203,27 @@ function App() {
     );
   }
 
+  // Parse invite param from URL
+  const inviteId = (() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('invite');
+    return id ? parseInt(id) : null;
+  })();
+
   // Show welcome modal if no user selected
   if (!currentUser) {
     return (
       <WelcomeModal
         people={people}
-        onSelect={handleSelectUser}
+        onSelect={(person) => {
+          // Clear invite param from URL after selection
+          if (inviteId) {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+          handleSelectUser(person);
+        }}
         onPersonAdded={fetchData}
+        inviteId={inviteId}
       />
     );
   }

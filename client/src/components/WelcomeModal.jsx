@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import AvatarUpload from './AvatarUpload';
 import './WelcomeModal.css';
 
 const API_BASE = '/api';
 
-function WelcomeModal({ people, onSelect, onPersonAdded }) {
+function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
   const [mode, setMode] = useState('select'); // 'select', 'create', 'admin-verify', or 'confirm'
   const [newPerson, setNewPerson] = useState({ first_name: '', last_name: '', bio: '', avatar: '', is_external: false });
   const [pendingSelection, setPendingSelection] = useState(null);
@@ -53,6 +53,18 @@ function WelcomeModal({ people, onSelect, onPersonAdded }) {
     }
     setMode('create');
   };
+
+  // Auto-select invited person from URL param
+  const inviteHandled = useRef(false);
+  useEffect(() => {
+    if (inviteId && people.length > 0 && !inviteHandled.current) {
+      const invitedPerson = people.find(p => p.id === inviteId);
+      if (invitedPerson && invitedPerson.is_pending) {
+        inviteHandled.current = true;
+        handleSelectPerson(invitedPerson);
+      }
+    }
+  }, [inviteId, people]);
 
   const handleSelectPerson = (person) => {
     setPendingSelection(person);
