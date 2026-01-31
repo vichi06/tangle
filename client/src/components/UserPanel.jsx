@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import AvatarUpload from './AvatarUpload';
 import ConfirmModal from './ConfirmModal';
 import InviteModal from './InviteModal';
 import DatePicker from './DatePicker';
@@ -448,14 +447,6 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
         {mode === 'create' && (
           <div className="create-person">
             <h3>+ Add new person</h3>
-
-            <div className="avatar-upload">
-              <AvatarUpload
-                value={newPerson.avatar}
-                onChange={(avatar) => setNewPerson(prev => ({ ...prev, avatar }))}
-                size={80}
-              />
-            </div>
 
             <div className="name-row">
               <input

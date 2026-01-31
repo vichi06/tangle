@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './InviteModal.css';
 
-function InviteModal({ person, onClose }) {
+function InviteModal({ person, onClose, title, description }) {
   const [copied, setCopied] = useState(false);
 
   const inviteUrl = `${window.location.origin}?invite=${person.id}`;
@@ -28,7 +28,7 @@ function InviteModal({ person, onClose }) {
     <div className="invite-overlay" onClick={onClose}>
       <div className="invite-modal" onClick={e => e.stopPropagation()}>
         <p className="invite-title">
-          Added {person.first_name} and linked!
+          {title || `Added ${person.first_name} and linked!`}
         </p>
 
         <div className="invite-person">
@@ -45,7 +45,7 @@ function InviteModal({ person, onClose }) {
         </div>
 
         <p className="invite-description">
-          Share this link so they can confirm their profile:
+          {description || 'Share this link so they can confirm their profile:'}
         </p>
 
         <div className="invite-link-row">
