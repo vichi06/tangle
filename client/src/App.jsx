@@ -335,7 +335,7 @@ function App() {
         />
       )}
 
-      {selectedProfileId && (() => {
+      {!!selectedProfileId && (() => {
         const selectedPerson = people.find(p => p.id === selectedProfileId);
         if (selectedPerson && selectedPerson.is_pending) {
           return (
@@ -347,26 +347,7 @@ function App() {
             />
           );
         }
-        return (
-          <ProfileFeedModal
-            profileId={selectedProfileId}
-            currentUser={currentUser}
-            people={people}
-            onClose={() => setSelectedProfileId(null)}
-            onRelationshipClick={(rel) => {
-              setSelectedProfileId(null);
-              setFeedRelationship({
-                ...rel,
-                person1FirstName: rel.person1_first_name,
-                person1LastName: rel.person1_last_name,
-                person1Avatar: rel.person1_avatar,
-                person2FirstName: rel.person2_first_name,
-                person2LastName: rel.person2_last_name,
-                person2Avatar: rel.person2_avatar
-              });
-            }}
-          />
-        );
+        return null;
       })()}
 
       {error && (
