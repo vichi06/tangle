@@ -70,65 +70,103 @@ router.get('/', (req, res) => {
   }
 });
 
-// Check cooldown status for a user
-router.get('/cooldown/:userId', (req, res) => {
-  try {
-    const lastIdea = db.prepare(`
-      SELECT created_at FROM ideas
-      WHERE sender_id = ?
-      ORDER BY created_at DESC
-      LIMIT 1
-    `).get(req.params.userId);
+// Consolidated user endpoint: cooldown, new-count, mentions-count
+router.get('/user/:userId', (req, res) => {
+  const { userId } = req.params;
+  const { action, since } = req.query;
 
-    if (!lastIdea) {
-      return res.json({ canSend: true, remainingMs: 0 });
+  if (action === 'cooldown') {
+    try {
+      const lastIdea = db.prepare(`
+        SELECT created_at FROM ideas
+        WHERE sender_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+      `).get(userId);
+
+      if (!lastIdea) {
+        return res.json({ canSend: true, remainingMs: 0 });
+      }
+
+      const lastTime = new Date(lastIdea.created_at + 'Z').getTime();
+      const now = Date.now();
+      const elapsed = now - lastTime;
+      const remaining = Math.max(0, COOLDOWN_MS - elapsed);
+
+      res.json({
+        canSend: remaining === 0,
+        remainingMs: remaining
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-
-    const lastTime = new Date(lastIdea.created_at + 'Z').getTime();
-    const now = Date.now();
-    const elapsed = now - lastTime;
-    const remaining = Math.max(0, COOLDOWN_MS - elapsed);
-
-    res.json({
-      canSend: remaining === 0,
-      remainingMs: remaining
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return;
   }
+
+  if (action === 'new-count') {
+    try {
+      let query;
+      let params;
+
+      if (since) {
+        query = `
+          SELECT COUNT(*) as count FROM ideas
+          WHERE created_at > ? AND sender_id != ?
+        `;
+        params = [since, userId];
+      } else {
+        query = `
+          SELECT COUNT(*) as count FROM ideas
+          WHERE sender_id != ?
+        `;
+        params = [userId];
+      }
+
+      const result = db.prepare(query).get(...params);
+      res.json({ count: result.count });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+    return;
+  }
+
+  if (action === 'mentions-count') {
+    try {
+      const result = db.prepare(`
+        SELECT COUNT(*) as count FROM message_mentions
+        WHERE mentioned_user_id = ? AND seen = 0
+      `).get(userId);
+
+      res.json({ count: result.count });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+    return;
+  }
+
+  res.status(400).json({ error: 'Invalid action. Use: cooldown, new-count, mentions-count' });
 });
 
-// Get count of new ideas since a timestamp (for notification badge)
-// Excludes ideas created by the requesting user
-router.get('/new-count/:userId', (req, res) => {
+// Consolidated user POST endpoint: mark-seen
+router.post('/user/:userId', (req, res) => {
   const { userId } = req.params;
-  const { since } = req.query;
+  const { action } = req.body;
 
-  try {
-    let query;
-    let params;
+  if (action === 'mark-seen') {
+    try {
+      db.prepare(`
+        UPDATE message_mentions SET seen = 1
+        WHERE mentioned_user_id = ? AND seen = 0
+      `).run(userId);
 
-    if (since) {
-      // Count ideas created after the given timestamp, excluding user's own ideas
-      query = `
-        SELECT COUNT(*) as count FROM ideas
-        WHERE created_at > ? AND sender_id != ?
-      `;
-      params = [since, userId];
-    } else {
-      // If no timestamp provided, return total count excluding user's own ideas
-      query = `
-        SELECT COUNT(*) as count FROM ideas
-        WHERE sender_id != ?
-      `;
-      params = [userId];
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-
-    const result = db.prepare(query).get(...params);
-    res.json({ count: result.count });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return;
   }
+
+  res.status(400).json({ error: 'Invalid action. Use: mark-seen' });
 });
 
 // Submit new message
@@ -212,157 +250,112 @@ router.post('/', (req, res) => {
   }
 });
 
-// Get count of unseen mentions for a user
-router.get('/mentions/count/:userId', (req, res) => {
-  const { userId } = req.params;
-
-  try {
-    const result = db.prepare(`
-      SELECT COUNT(*) as count FROM message_mentions
-      WHERE mentioned_user_id = ? AND seen = 0
-    `).get(userId);
-
-    res.json({ count: result.count });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Mark all mentions as seen for a user
-router.post('/mentions/mark-seen/:userId', (req, res) => {
-  const { userId } = req.params;
-
-  try {
-    db.prepare(`
-      UPDATE message_mentions SET seen = 1
-      WHERE mentioned_user_id = ? AND seen = 0
-    `).run(userId);
-
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Add/remove emoji reaction to a message
-router.post('/:messageId/react', (req, res) => {
+// Consolidated action endpoint: vote + react
+router.post('/:messageId/action', (req, res) => {
   const { messageId } = req.params;
-  const { user_id, emoji } = req.body;
+  const { action, user_id, vote, emoji } = req.body;
 
   if (!user_id) {
     return res.status(400).json({ error: 'User ID is required' });
   }
 
-  if (!emoji) {
-    return res.status(400).json({ error: 'Emoji is required' });
+  if (action === 'vote') {
+    if (vote !== 1 && vote !== -1 && vote !== 0) {
+      return res.status(400).json({ error: 'Vote must be 1, -1, or 0' });
+    }
+
+    try {
+      const idea = db.prepare('SELECT id FROM ideas WHERE id = ?').get(messageId);
+      if (!idea) {
+        return res.status(404).json({ error: 'Idea not found' });
+      }
+
+      const user = db.prepare('SELECT id FROM people WHERE id = ?').get(user_id);
+      if (!user) {
+        return res.status(400).json({ error: 'User not found' });
+      }
+
+      if (vote === 0) {
+        db.prepare('DELETE FROM idea_votes WHERE idea_id = ? AND user_id = ?').run(messageId, user_id);
+      } else {
+        db.prepare(`
+          INSERT INTO idea_votes (idea_id, user_id, vote)
+          VALUES (?, ?, ?)
+          ON CONFLICT(idea_id, user_id) DO UPDATE SET vote = excluded.vote
+        `).run(messageId, user_id, vote);
+      }
+
+      const counts = db.prepare(`
+        SELECT
+          COALESCE(SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END), 0) as upvotes,
+          COALESCE(SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END), 0) as downvotes
+        FROM idea_votes
+        WHERE idea_id = ?
+      `).get(messageId);
+
+      return res.json({
+        idea_id: parseInt(messageId),
+        upvotes: counts.upvotes,
+        downvotes: counts.downvotes,
+        userVote: vote
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+    return;
   }
 
-  try {
-    // Verify message exists
-    const message = db.prepare('SELECT id FROM ideas WHERE id = ?').get(messageId);
-    if (!message) {
-      return res.status(404).json({ error: 'Message not found' });
+  if (action === 'react') {
+    if (!emoji) {
+      return res.status(400).json({ error: 'Emoji is required' });
     }
 
-    // Verify user exists
-    const user = db.prepare('SELECT id FROM people WHERE id = ?').get(user_id);
-    if (!user) {
-      return res.status(400).json({ error: 'User not found' });
+    try {
+      const message = db.prepare('SELECT id FROM ideas WHERE id = ?').get(messageId);
+      if (!message) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
+
+      const user = db.prepare('SELECT id FROM people WHERE id = ?').get(user_id);
+      if (!user) {
+        return res.status(400).json({ error: 'User not found' });
+      }
+
+      const existing = db.prepare(
+        'SELECT id FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?'
+      ).get(messageId, user_id, emoji);
+
+      if (existing) {
+        db.prepare('DELETE FROM message_reactions WHERE id = ?').run(existing.id);
+      } else {
+        db.prepare(
+          'INSERT INTO message_reactions (message_id, user_id, emoji) VALUES (?, ?, ?)'
+        ).run(messageId, user_id, emoji);
+      }
+
+      const reactions = db.prepare(`
+        SELECT emoji, COUNT(*) as count, GROUP_CONCAT(user_id) as user_ids
+        FROM message_reactions
+        WHERE message_id = ?
+        GROUP BY emoji
+      `).all(messageId);
+
+      return res.json({
+        message_id: parseInt(messageId),
+        reactions: reactions.map(r => ({
+          emoji: r.emoji,
+          count: r.count,
+          user_ids: r.user_ids.split(',').map(Number),
+          reacted: r.user_ids.split(',').map(Number).includes(user_id)
+        }))
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-
-    // Check if reaction exists (toggle behavior)
-    const existing = db.prepare(
-      'SELECT id FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?'
-    ).get(messageId, user_id, emoji);
-
-    if (existing) {
-      // Remove reaction
-      db.prepare('DELETE FROM message_reactions WHERE id = ?').run(existing.id);
-    } else {
-      // Add reaction
-      db.prepare(
-        'INSERT INTO message_reactions (message_id, user_id, emoji) VALUES (?, ?, ?)'
-      ).run(messageId, user_id, emoji);
-    }
-
-    // Return updated reactions for this message
-    const reactions = db.prepare(`
-      SELECT emoji, COUNT(*) as count, GROUP_CONCAT(user_id) as user_ids
-      FROM message_reactions
-      WHERE message_id = ?
-      GROUP BY emoji
-    `).all(messageId);
-
-    res.json({
-      message_id: parseInt(messageId),
-      reactions: reactions.map(r => ({
-        emoji: r.emoji,
-        count: r.count,
-        user_ids: r.user_ids.split(',').map(Number),
-        reacted: r.user_ids.split(',').map(Number).includes(user_id)
-      }))
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Vote on an idea
-router.post('/:ideaId/vote', (req, res) => {
-  const { ideaId } = req.params;
-  const { user_id, vote } = req.body;
-
-  if (!user_id) {
-    return res.status(400).json({ error: 'User ID is required' });
+    return;
   }
 
-  if (vote !== 1 && vote !== -1 && vote !== 0) {
-    return res.status(400).json({ error: 'Vote must be 1, -1, or 0' });
-  }
-
-  try {
-    // Verify idea exists
-    const idea = db.prepare('SELECT id FROM ideas WHERE id = ?').get(ideaId);
-    if (!idea) {
-      return res.status(404).json({ error: 'Idea not found' });
-    }
-
-    // Verify user exists
-    const user = db.prepare('SELECT id FROM people WHERE id = ?').get(user_id);
-    if (!user) {
-      return res.status(400).json({ error: 'User not found' });
-    }
-
-    if (vote === 0) {
-      // Remove vote
-      db.prepare('DELETE FROM idea_votes WHERE idea_id = ? AND user_id = ?').run(ideaId, user_id);
-    } else {
-      // Upsert vote
-      db.prepare(`
-        INSERT INTO idea_votes (idea_id, user_id, vote)
-        VALUES (?, ?, ?)
-        ON CONFLICT(idea_id, user_id) DO UPDATE SET vote = excluded.vote
-      `).run(ideaId, user_id, vote);
-    }
-
-    // Return updated vote counts
-    const counts = db.prepare(`
-      SELECT
-        COALESCE(SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END), 0) as upvotes,
-        COALESCE(SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END), 0) as downvotes
-      FROM idea_votes
-      WHERE idea_id = ?
-    `).get(ideaId);
-
-    res.json({
-      idea_id: parseInt(ideaId),
-      upvotes: counts.upvotes,
-      downvotes: counts.downvotes,
-      userVote: vote
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  res.status(400).json({ error: 'Invalid action. Use: vote, react' });
 });
 
 export default router;

@@ -50,7 +50,7 @@ function ChatroomPanel({ currentUser, people, onClose }) {
   // Check cooldown status
   const checkCooldown = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/chatroom/cooldown/${currentUser.id}`);
+      const res = await fetch(`${API_BASE}/chatroom/user/${currentUser.id}?action=cooldown`);
       if (!res.ok) throw new Error('Failed to check cooldown');
       const data = await res.json();
       setCooldown(data);
@@ -489,10 +489,10 @@ function ChatroomPanel({ currentUser, people, onClose }) {
     }));
 
     try {
-      const res = await fetch(`${API_BASE}/chatroom/${messageId}/vote`, {
+      const res = await fetch(`${API_BASE}/chatroom/${messageId}/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: currentUser.id, vote: newVote })
+        body: JSON.stringify({ action: 'vote', user_id: currentUser.id, vote: newVote })
       });
 
       if (!res.ok) {
@@ -518,10 +518,10 @@ function ChatroomPanel({ currentUser, people, onClose }) {
     setEmojiPickerMessageId(null);
 
     try {
-      const res = await fetch(`${API_BASE}/chatroom/${messageId}/react`, {
+      const res = await fetch(`${API_BASE}/chatroom/${messageId}/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: currentUser.id, emoji })
+        body: JSON.stringify({ action: 'react', user_id: currentUser.id, emoji })
       });
 
       if (!res.ok) {
