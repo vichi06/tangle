@@ -220,6 +220,12 @@ function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
               <p className="no-people">No results found</p>
             ) : (
               <p className="no-people">No one here yet. Be the first!</p>
+              <button
+                className="switch-mode-btn"
+                onClick={handleSwitchToCreate}
+              >
+                Join the graph
+              </button>
             )}
 
             {noSearchResults && (
