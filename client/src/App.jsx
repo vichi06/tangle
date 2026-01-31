@@ -7,6 +7,7 @@ import WelcomeModal from './components/WelcomeModal';
 import ProfileEdit from './components/ProfileEdit';
 import FeedModal from './components/FeedModal';
 import ProfileFeedModal from './components/ProfileFeedModal';
+import InviteModal from './components/InviteModal';
 import './App.css';
 
 const API_BASE = '/api';
@@ -39,6 +40,7 @@ function App() {
   const [newMentionsCount, setNewMentionsCount] = useState(0);
   const [feedRelationship, setFeedRelationship] = useState(null);
   const [selectedProfileId, setSelectedProfileId] = useState(null);
+  const [showPendingInvite, setShowPendingInvite] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -237,8 +239,8 @@ function App() {
         onShowTooltip={handleShowTooltip}
         onHideTooltip={handleHideTooltip}
         onRefresh={fetchData}
-        onOpenFeed={setFeedRelationship}
-        onNodeClick={setSelectedProfileId}
+        onOpenFeed={currentUser.is_pending ? () => setShowPendingInvite(true) : setFeedRelationship}
+        onNodeClick={currentUser.is_pending ? () => setShowPendingInvite(true) : setSelectedProfileId}
       />
 
       {tooltip && (
@@ -343,6 +345,15 @@ function App() {
               person2Avatar: rel.person2_avatar
             });
           }}
+        />
+      )}
+
+      {showPendingInvite && !!currentUser.is_pending && (
+        <InviteModal
+          person={currentUser}
+          title="Share your invite link"
+          description="Confirm your profile first, or share this link to come back later:"
+          onClose={() => setShowPendingInvite(false)}
         />
       )}
 
