@@ -8,7 +8,7 @@ router.get('/', (req, res) => {
   try {
     const people = db.prepare(`
       SELECT id, first_name, last_name, avatar, bio, is_external, is_admin, is_pending, created_at
-      FROM people ORDER BY last_name, first_name
+      FROM people WHERE is_system = 0 ORDER BY last_name, first_name
     `).all();
     res.json(people);
   } catch (err) {
@@ -114,6 +114,20 @@ router.post('/:id/confirm', (req, res) => {
       SELECT id, first_name, last_name, avatar, bio, is_external, is_admin, is_pending, created_at
       FROM people WHERE id = ?
     `).get(req.params.id);
+
+    // Insert TanTan bot welcome message
+    try {
+      const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
+      if (bot) {
+        db.prepare('INSERT INTO ideas (sender_id, content) VALUES (?, ?)').run(
+          bot.id,
+          `👋 Welcome ${person.first_name} to the Tangle!`
+        );
+      }
+    } catch (botErr) {
+      console.error('Failed to insert bot message:', botErr);
+    }
+
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -562,13 +562,17 @@ function ChatroomPanel({ currentUser, people, onClose }) {
         ) : messages.length === 0 ? (
           <div className="no-messages">No messages yet. Be the first!</div>
         ) : (
-          messages.map(message => (
+          messages.map(message => {
+            const isSystem = !!message.sender_is_system;
+            return (
             <div
               key={message.id}
-              className={`message-item ${message.sender_id === currentUser.id ? 'own' : ''}`}
+              className={`message-item ${message.sender_id === currentUser.id ? 'own' : ''} ${isSystem ? 'system-message' : ''}`}
             >
               <div className="message-avatar">
-                {message.sender_avatar ? (
+                {isSystem ? (
+                  <div className="avatar-placeholder system-avatar">🤖</div>
+                ) : message.sender_avatar ? (
                   <img src={message.sender_avatar} alt="" />
                 ) : (
                   <div className="avatar-placeholder">
@@ -578,14 +582,14 @@ function ChatroomPanel({ currentUser, people, onClose }) {
               </div>
               <div className="message-content">
                 <div className="message-header">
-                  <span className="message-sender">
+                  <span className={`message-sender ${isSystem ? 'system-sender' : ''}`}>
                     {message.sender_first_name} {message.sender_last_name}
                   </span>
                   <span className="message-time">{formatTime(message.created_at)}</span>
                 </div>
                 <p className="message-text">{renderMessageContent(message.content)}</p>
-                {/* Reactions display */}
-                {message.reactions && message.reactions.length > 0 && (
+                {/* Reactions display - hidden for system messages */}
+                {!isSystem && message.reactions && message.reactions.length > 0 && (
                   <div className="message-reactions">
                     {message.reactions.map(reaction => (
                       <button
@@ -601,6 +605,7 @@ function ChatroomPanel({ currentUser, people, onClose }) {
                   </div>
                 )}
 
+                {!isSystem && (
                 <div className="message-actions">
                   <div className="message-votes">
                     <button
@@ -646,9 +651,11 @@ function ChatroomPanel({ currentUser, people, onClose }) {
                     )}
                   </div>
                 </div>
+                )}
               </div>
             </div>
-          ))
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </div>

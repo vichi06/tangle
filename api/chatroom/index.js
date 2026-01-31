@@ -21,6 +21,7 @@ export default async function handler(req, res) {
           p.first_name as sender_first_name,
           p.last_name as sender_last_name,
           p.avatar as sender_avatar,
+          p.is_system as sender_is_system,
           COALESCE(SUM(CASE WHEN v.vote = 1 THEN 1 ELSE 0 END), 0) as upvotes,
           COALESCE(SUM(CASE WHEN v.vote = -1 THEN 1 ELSE 0 END), 0) as downvotes
         FROM ideas i

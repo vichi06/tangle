@@ -12,7 +12,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const result = await db.execute('SELECT * FROM people ORDER BY last_name, first_name');
+      const result = await db.execute('SELECT * FROM people WHERE is_system = 0 ORDER BY last_name, first_name');
       return res.json(result.rows);
     }
 
