@@ -14,6 +14,7 @@ const API_BASE = '/api';
 const USER_COOKIE_NAME = 'tangle_user_id';
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
 const CHATROOM_LAST_SEEN_KEY = 'tangle_chatroom_last_seen'; // localStorage key prefix
+const GRAPH_POLL_INTERVAL = 10000; // Poll graph data every 10 seconds
 
 // Cookie helpers
 const getCookie = (name) => {
@@ -67,6 +68,12 @@ function App() {
 
   useEffect(() => {
     fetchData();
+
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchData();
+    }, GRAPH_POLL_INTERVAL);
+
+    return () => clearInterval(interval);
   }, [fetchData]);
 
   // Restore user from cookie once data is loaded
