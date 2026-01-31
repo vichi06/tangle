@@ -500,6 +500,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
   const [showRefreshMessage, setShowRefreshMessage] = useState(false);
   const revealTimeoutsRef = useRef([]);
   const hasRevealedRef = useRef(false);
+  const revealDataRef = useRef(null); // Snapshot of graph data used during reveal
 
   // Full graph data (all nodes/links) - used for BFS reveal order
   const fullGraphData = useMemo(() => {
@@ -583,6 +584,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
   const graphData = useMemo(() => {
     // null = reveal complete, show all
     if (visibleNodeIds === null) {
+      revealDataRef.current = null; // Clear snapshot
       return fullGraphData;
     }
 
@@ -591,11 +593,14 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       return { nodes: [], links: [] };
     }
 
+    // During reveal, use the snapshot so polling doesn't interfere
+    const source = revealDataRef.current || fullGraphData;
+
     // Set = during reveal, filter to visible nodes only
-    const nodes = fullGraphData.nodes.filter(n => visibleNodeIds.has(n.id));
+    const nodes = source.nodes.filter(n => visibleNodeIds.has(n.id));
 
     // Show links where both endpoints are visible
-    const links = fullGraphData.links.filter(l => {
+    const links = source.links.filter(l => {
       const srcId = l.source.id ?? l.source;
       const tgtId = l.target.id ?? l.target;
       return visibleNodeIds.has(srcId) && visibleNodeIds.has(tgtId);
@@ -662,6 +667,11 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
   useEffect(() => {
     // Skip if no data, already completed, or positions not ready
     if (fullGraphData.nodes.length === 0 || hasRevealedRef.current || !positionsReady) return;
+    // Skip if reveal is already in progress (polling caused fullGraphData to change)
+    if (revealDataRef.current) return;
+
+    // Snapshot the graph data so polling won't restart the animation
+    revealDataRef.current = fullGraphData;
 
     // Clear any pending timeouts from previous interrupted runs (StrictMode)
     revealTimeoutsRef.current.forEach(clearTimeout);
@@ -712,15 +722,9 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     // After all nodes revealed, mark as complete
     const finalTimeout = setTimeout(() => {
       setVisibleNodeIds(null);
-      hasRevealedRef.current = true; // Only mark complete when animation finishes
+      hasRevealedRef.current = true;
     }, delay + 500);
     revealTimeoutsRef.current.push(finalTimeout);
-
-    // Cleanup pending timeouts on re-run (allows animation restart in StrictMode)
-    return () => {
-      revealTimeoutsRef.current.forEach(clearTimeout);
-      revealTimeoutsRef.current = [];
-    };
   }, [fullGraphData, currentUserId, positionsReady]);
 
   const handleReset = useCallback(() => {
