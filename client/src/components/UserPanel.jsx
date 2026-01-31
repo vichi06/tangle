@@ -191,7 +191,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
   const acceptRelationship = async (relId) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/relationships/${relId}/accept`, {
+      const res = await fetch(`${API_BASE}/relationships/${relId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: managedUser.id })

@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__linear-server__list_teams",
+      "mcp__linear-server__create_issue",
+      "mcp__linear-server__update_issue",
+      "Bash(npm run dev:*)",
+      "Bash(npm install)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(sqlite3:*)",
+      "Bash(node -e:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "mcp__linear-server__get_issue",
+      "Bash(ls:*)",
+      "Bash(where:*)",
+      "mcp__linear-server__list_issues",
+      "Bash(npx vite build)",
+      "Bash(grep -n \"calculateCurvedPath\\\\|C\\\\`\\\\|M\\\\`\" /c/Users/vince/Desktop/projects/tangle/client/src/components/Graph.jsx)",
+      "Bash(git push:*)",
+      "Bash(npx vercel ls --token)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)"
+    ]
+  }
+}
