@@ -11,7 +11,7 @@ router.get('/:profileId', (req, res) => {
   try {
     // Verify profile exists and get profile info
     const profile = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_external
+      SELECT id, first_name, last_name, avatar, bio
       FROM people WHERE id = ?
     `).get(profileId);
 

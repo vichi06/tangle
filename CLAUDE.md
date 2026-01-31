@@ -103,7 +103,7 @@ git checkout dev
 ## Database Schema
 
 ```sql
-people: id, first_name, last_name, bio, avatar, is_external, is_admin, admin_code, is_pending
+people: id, first_name, last_name, bio, avatar, is_admin, admin_code, is_pending
 relationships: id, person1_id, person2_id, intensity, date, context, is_pending
 ideas: id, user_id, text, created_at, status (pending/accepted/rejected)
 idea_votes: id, idea_id, user_id, value (-1 or 1)

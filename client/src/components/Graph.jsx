@@ -537,7 +537,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
         lastName: person.last_name,
         avatar: person.avatar,
         bio: person.bio,
-        isExternal: !!person.is_external,
         isPending: !!person.is_pending,
         degree: m.degree,
         betweenness: m.betweenness,

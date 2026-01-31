@@ -22,8 +22,7 @@ function ProfileEdit({ user, people, currentUser, onUpdate, onClose, onDelete })
     first_name: editingUser.first_name,
     last_name: editingUser.last_name,
     bio: editingUser.bio || '',
-    avatar: editingUser.avatar || '',
-    is_external: !!editingUser.is_external
+    avatar: editingUser.avatar || ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -37,8 +36,7 @@ function ProfileEdit({ user, people, currentUser, onUpdate, onClose, onDelete })
       first_name: newUser.first_name,
       last_name: newUser.last_name,
       bio: newUser.bio || '',
-      avatar: newUser.avatar || '',
-      is_external: !!newUser.is_external
+      avatar: newUser.avatar || ''
     });
     setError(null);
   };
@@ -142,14 +140,6 @@ function ProfileEdit({ user, people, currentUser, onUpdate, onClose, onDelete })
             onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))}
           />
 
-          <label className="external-checkbox">
-            <input
-              type="checkbox"
-              checked={profile.is_external}
-              onChange={e => setProfile(p => ({ ...p, is_external: e.target.checked }))}
-            />
-            <span>External to the group</span>
-          </label>
         </div>
 
         {error && <p className="profile-error">{error}</p>}

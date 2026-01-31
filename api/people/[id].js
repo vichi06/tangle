@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
-      const { first_name, last_name, avatar, bio, is_external } = req.body;
+      const { first_name, last_name, avatar, bio } = req.body;
 
       const existing = await db.execute({
         sql: 'SELECT * FROM people WHERE id = ?',
@@ -40,13 +40,12 @@ export default async function handler(req, res) {
       const person = existing.rows[0];
 
       await db.execute({
-        sql: 'UPDATE people SET first_name = ?, last_name = ?, avatar = ?, bio = ?, is_external = ? WHERE id = ?',
+        sql: 'UPDATE people SET first_name = ?, last_name = ?, avatar = ?, bio = ? WHERE id = ?',
         args: [
           first_name || person.first_name,
           last_name || person.last_name,
           avatar !== undefined ? avatar : person.avatar,
           bio !== undefined ? bio : person.bio,
-          is_external !== undefined ? (is_external ? 1 : 0) : person.is_external,
           id
         ]
       });

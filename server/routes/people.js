@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/', (req, res) => {
   try {
     const people = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_external, is_admin, is_pending, created_at
+      SELECT id, first_name, last_name, avatar, bio, is_admin, is_pending, created_at
       FROM people WHERE is_system = 0 ORDER BY last_name, first_name
     `).all();
     res.json(people);
@@ -20,7 +20,7 @@ router.get('/', (req, res) => {
 router.get('/:id', (req, res) => {
   try {
     const person = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_external, is_admin, is_pending, created_at
+      SELECT id, first_name, last_name, avatar, bio, is_admin, is_pending, created_at
       FROM people WHERE id = ?
     `).get(req.params.id);
     if (!person) {
@@ -34,15 +34,15 @@ router.get('/:id', (req, res) => {
 
 // Create person
 router.post('/', (req, res) => {
-  const { first_name, last_name, avatar, bio, is_external, is_pending } = req.body;
+  const { first_name, last_name, avatar, bio, is_pending } = req.body;
   if (!first_name || !last_name) {
     return res.status(400).json({ error: 'First name and last name are required' });
   }
   try {
-    const stmt = db.prepare('INSERT INTO people (first_name, last_name, avatar, bio, is_external, is_pending) VALUES (?, ?, ?, ?, ?, ?)');
-    const result = stmt.run(first_name, last_name, avatar || null, bio || null, is_external ? 1 : 0, is_pending ? 1 : 0);
+    const stmt = db.prepare('INSERT INTO people (first_name, last_name, avatar, bio, is_pending) VALUES (?, ?, ?, ?, ?)');
+    const result = stmt.run(first_name, last_name, avatar || null, bio || null, is_pending ? 1 : 0);
     const person = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_external, is_admin, is_pending, created_at
+      SELECT id, first_name, last_name, avatar, bio, is_admin, is_pending, created_at
       FROM people WHERE id = ?
     `).get(result.lastInsertRowid);
     res.status(201).json(person);
@@ -53,23 +53,22 @@ router.post('/', (req, res) => {
 
 // Update person (admin fields are set directly in DB)
 router.put('/:id', (req, res) => {
-  const { first_name, last_name, avatar, bio, is_external } = req.body;
+  const { first_name, last_name, avatar, bio } = req.body;
   try {
     const existing = db.prepare('SELECT * FROM people WHERE id = ?').get(req.params.id);
     if (!existing) {
       return res.status(404).json({ error: 'Person not found' });
     }
-    const stmt = db.prepare('UPDATE people SET first_name = ?, last_name = ?, avatar = ?, bio = ?, is_external = ? WHERE id = ?');
+    const stmt = db.prepare('UPDATE people SET first_name = ?, last_name = ?, avatar = ?, bio = ? WHERE id = ?');
     stmt.run(
       first_name || existing.first_name,
       last_name || existing.last_name,
       avatar !== undefined ? avatar : existing.avatar,
       bio !== undefined ? bio : existing.bio,
-      is_external !== undefined ? (is_external ? 1 : 0) : existing.is_external,
       req.params.id
     );
     const person = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_external, is_admin, is_pending, created_at
+      SELECT id, first_name, last_name, avatar, bio, is_admin, is_pending, created_at
       FROM people WHERE id = ?
     `).get(req.params.id);
     res.json(person);
@@ -111,7 +110,7 @@ router.post('/:id/confirm', (req, res) => {
     }
     db.prepare('UPDATE people SET is_pending = 0 WHERE id = ?').run(req.params.id);
     const updated = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_external, is_admin, is_pending, created_at
+      SELECT id, first_name, last_name, avatar, bio, is_admin, is_pending, created_at
       FROM people WHERE id = ?
     `).get(req.params.id);
 
