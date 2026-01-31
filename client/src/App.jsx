@@ -40,7 +40,6 @@ function App() {
   const [newMentionsCount, setNewMentionsCount] = useState(0);
   const [feedRelationship, setFeedRelationship] = useState(null);
   const [selectedProfileId, setSelectedProfileId] = useState(null);
-  const [showPendingInvite, setShowPendingInvite] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -239,8 +238,8 @@ function App() {
         onShowTooltip={handleShowTooltip}
         onHideTooltip={handleHideTooltip}
         onRefresh={fetchData}
-        onOpenFeed={currentUser.is_pending ? () => setShowPendingInvite(true) : setFeedRelationship}
-        onNodeClick={currentUser.is_pending ? () => setShowPendingInvite(true) : setSelectedProfileId}
+        onOpenFeed={setFeedRelationship}
+        onNodeClick={setSelectedProfileId}
       />
 
       {tooltip && (
@@ -327,35 +326,39 @@ function App() {
         />
       )}
 
-      {selectedProfileId && (
-        <ProfileFeedModal
-          profileId={selectedProfileId}
-          currentUser={currentUser}
-          people={people}
-          onClose={() => setSelectedProfileId(null)}
-          onRelationshipClick={(rel) => {
-            setSelectedProfileId(null);
-            setFeedRelationship({
-              ...rel,
-              person1FirstName: rel.person1_first_name,
-              person1LastName: rel.person1_last_name,
-              person1Avatar: rel.person1_avatar,
-              person2FirstName: rel.person2_first_name,
-              person2LastName: rel.person2_last_name,
-              person2Avatar: rel.person2_avatar
-            });
-          }}
-        />
-      )}
-
-      {showPendingInvite && !!currentUser.is_pending && (
-        <InviteModal
-          person={currentUser}
-          title="Share your invite link"
-          description="Confirm your profile first, or share this link to come back later:"
-          onClose={() => setShowPendingInvite(false)}
-        />
-      )}
+      {selectedProfileId && (() => {
+        const selectedPerson = people.find(p => p.id === selectedProfileId);
+        if (selectedPerson && selectedPerson.is_pending) {
+          return (
+            <InviteModal
+              person={selectedPerson}
+              title={`${selectedPerson.first_name} hasn't joined yet`}
+              description="Share this link so they can confirm their profile:"
+              onClose={() => setSelectedProfileId(null)}
+            />
+          );
+        }
+        return (
+          <ProfileFeedModal
+            profileId={selectedProfileId}
+            currentUser={currentUser}
+            people={people}
+            onClose={() => setSelectedProfileId(null)}
+            onRelationshipClick={(rel) => {
+              setSelectedProfileId(null);
+              setFeedRelationship({
+                ...rel,
+                person1FirstName: rel.person1_first_name,
+                person1LastName: rel.person1_last_name,
+                person1Avatar: rel.person1_avatar,
+                person2FirstName: rel.person2_first_name,
+                person2LastName: rel.person2_last_name,
+                person2Avatar: rel.person2_avatar
+              });
+            }}
+          />
+        );
+      })()}
 
       {error && (
         <div className="error-toast">
