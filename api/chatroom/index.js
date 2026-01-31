@@ -33,6 +33,28 @@ export default async function handler(req, res) {
 
       let ideas = result.rows;
 
+      // Get all reactions grouped by message
+      const allReactions = await db.execute(`
+        SELECT message_id, emoji, COUNT(*) as count, GROUP_CONCAT(user_id) as user_ids
+        FROM message_reactions
+        GROUP BY message_id, emoji
+      `);
+
+      // Build reactions map by message_id
+      const reactionsMap = {};
+      allReactions.rows.forEach(r => {
+        if (!reactionsMap[r.message_id]) {
+          reactionsMap[r.message_id] = [];
+        }
+        const userIds = String(r.user_ids).split(',').map(Number);
+        reactionsMap[r.message_id].push({
+          emoji: r.emoji,
+          count: r.count,
+          user_ids: userIds,
+          reacted: userId ? userIds.includes(parseInt(userId)) : false
+        });
+      });
+
       // If userId provided, get user's votes
       if (userId) {
         const userVotes = await db.execute({
@@ -45,6 +67,12 @@ export default async function handler(req, res) {
           userVote: voteMap[idea.id] || 0
         }));
       }
+
+      // Add reactions to each idea
+      ideas = ideas.map(idea => ({
+        ...idea,
+        reactions: reactionsMap[idea.id] || []
+      }));
 
       return res.json(ideas);
     }

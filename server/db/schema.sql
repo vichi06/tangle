@@ -66,6 +66,21 @@ CREATE TABLE IF NOT EXISTS message_mentions (
 CREATE INDEX IF NOT EXISTS idx_mentions_user ON message_mentions(mentioned_user_id);
 CREATE INDEX IF NOT EXISTS idx_mentions_message ON message_mentions(message_id);
 
+-- Emoji reactions on chatroom messages
+CREATE TABLE IF NOT EXISTS message_reactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  message_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  emoji TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (message_id) REFERENCES ideas(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES people(id) ON DELETE CASCADE,
+  UNIQUE(message_id, user_id, emoji)
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_reactions_message ON message_reactions(message_id);
+CREATE INDEX IF NOT EXISTS idx_message_reactions_user ON message_reactions(user_id);
+
 -- Feed comments for relationship edges
 CREATE TABLE IF NOT EXISTS feed_comments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
