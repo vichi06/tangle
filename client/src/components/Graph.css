@@ -358,18 +358,20 @@
   stroke-width: 4;
 }
 
-/* Pending node styling - blurred with dashed border */
-.node.pending .node-scale-group {
-  opacity: 0.7;
-}
-
+/* Pending node styling - muted with dashed border */
 .node.pending .node-border {
   stroke: #555;
   stroke-dasharray: 4 3;
+  opacity: 0.7;
 }
 
 .node.pending image {
   filter: grayscale(40%);
+  opacity: 0.7;
+}
+
+.node.pending .node-initial {
+  opacity: 0.7;
 }
 
 /* Pending links - dashed lines */
