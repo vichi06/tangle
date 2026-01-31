@@ -219,13 +219,15 @@ function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
             ) : people.length > 0 ? (
               <p className="no-people">No results found</p>
             ) : (
-              <p className="no-people">No one here yet. Be the first!</p>
-              <button
-                className="switch-mode-btn"
-                onClick={handleSwitchToCreate}
-              >
-                Join the graph
-              </button>
+              <>
+                <p className="no-people">No one here yet. Be the first!</p>
+                <button
+                  className="switch-mode-btn"
+                  onClick={handleSwitchToCreate}
+                >
+                  Join the graph
+                </button>
+              </>
             )}
 
             {noSearchResults && (
