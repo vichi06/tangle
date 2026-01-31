@@ -107,7 +107,7 @@ router.post('/', (req, res) => {
 });
 
 // Accept pending relationship
-router.post('/:id/accept', (req, res) => {
+router.post('/:id', (req, res) => {
   const { user_id } = req.body;
 
   if (!user_id) {
