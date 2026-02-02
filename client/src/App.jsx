@@ -273,7 +273,6 @@ function App() {
         tooltipData={tooltip}
         onShowTooltip={handleShowTooltip}
         onHideTooltip={handleHideTooltip}
-        onRefresh={fetchData}
         onOpenFeed={setFeedRelationship}
         onNodeClick={setSelectedProfileId}
       />
