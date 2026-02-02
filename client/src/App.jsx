@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Graph from './components/Graph';
 import Tooltip from './components/Tooltip';
 import UserPanel from './components/UserPanel';
@@ -41,6 +41,7 @@ function App() {
   const [newMentionsCount, setNewMentionsCount] = useState(0);
   const [badgeKey, setBadgeKey] = useState(0);
   const [mentionBadgeKey, setMentionBadgeKey] = useState(0);
+  const [pendingBadgeKey, setPendingBadgeKey] = useState(0);
   const [feedRelationship, setFeedRelationship] = useState(null);
   const [selectedProfileId, setSelectedProfileId] = useState(null);
 
@@ -124,6 +125,23 @@ function App() {
     setCurrentUser(updatedUser);
     fetchData();
   };
+
+  // Count pending incoming relationships for current user
+  const pendingRelCount = useMemo(() => {
+    if (!currentUser) return 0;
+    return relationships.filter(r =>
+      r.is_pending && r.pending_by !== currentUser.id &&
+      (r.person1_id === currentUser.id || r.person2_id === currentUser.id)
+    ).length;
+  }, [relationships, currentUser]);
+
+  const prevPendingRef = useRef(0);
+  useEffect(() => {
+    if (pendingRelCount > prevPendingRef.current) {
+      setPendingBadgeKey(k => k + 1);
+    }
+    prevPendingRef.current = pendingRelCount;
+  }, [pendingRelCount]);
 
   // Get the localStorage key for the current user's last seen chatroom timestamp
   const getChatroomLastSeenKey = useCallback(() => {
@@ -295,10 +313,13 @@ function App() {
           </div>
         </div>
         <button
-          className="panel-toggle"
+          className="panel-toggle kisses-toggle"
           onClick={() => setShowPanel(!showPanel)}
         >
           {showPanel ? 'Close' : 'My kisses'}
+          {!showPanel && pendingRelCount > 0 && (
+            <span key={pendingBadgeKey} className="notification-badge">{pendingRelCount > 9 ? '9+' : pendingRelCount}</span>
+          )}
         </button>
       </div>
 
