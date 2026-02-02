@@ -811,6 +811,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
 
     // Detect touch device
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    let touchTooltipNodeId = null;
 
     // Helper to show node tooltip
     const showNodeTooltip = (event, d) => {
@@ -885,6 +886,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       if (isTouchDevice) {
         svg.on('click', (event) => {
           if (event.target === svgRef.current) {
+            touchTooltipNodeId = null;
             g.selectAll('.node').classed('highlighted', false);
             g.selectAll('.link').classed('highlighted connected dimmed', false);
             onHideTooltip();
@@ -1316,7 +1318,21 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     };
 
     if (isTouchDevice) {
-      node.on('click', handleNodeClick);
+      node.on('click', (event, d) => {
+        event.stopPropagation();
+        if (touchTooltipNodeId === d.id) {
+          // Second tap on same node — open profile
+          touchTooltipNodeId = null;
+          highlightNode(d, false);
+          onHideTooltip();
+          if (onNodeClick) onNodeClick(d.id);
+        } else {
+          // First tap — show tooltip
+          touchTooltipNodeId = d.id;
+          highlightNode(d, true);
+          showNodeTooltip(event, d);
+        }
+      });
     } else {
       node
         .on('click', handleNodeClick)
