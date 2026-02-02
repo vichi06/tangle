@@ -23,4 +23,18 @@ db.pragma('foreign_keys = ON');
 const schema = fs.readFileSync(schemaPath, 'utf8');
 db.exec(schema);
 
+// Migrations: add columns that may be missing on older databases
+const migrations = [
+  { table: 'people', column: 'is_pending', sql: 'ALTER TABLE people ADD COLUMN is_pending INTEGER DEFAULT 0' },
+  { table: 'relationships', column: 'is_pending', sql: 'ALTER TABLE relationships ADD COLUMN is_pending INTEGER DEFAULT 0' },
+  { table: 'relationships', column: 'pending_by', sql: 'ALTER TABLE relationships ADD COLUMN pending_by INTEGER REFERENCES people(id) ON DELETE SET NULL' },
+];
+
+for (const { table, column, sql } of migrations) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some(c => c.name === column)) {
+    db.exec(sql);
+  }
+}
+
 export default db;
