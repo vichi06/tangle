@@ -1,7 +1,5 @@
 import db from '../../lib/db.js';
 
-const COOLDOWN_MINUTES = 30;
-const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -99,26 +97,6 @@ export default async function handler(req, res) {
       });
       if (sender.rows.length === 0) {
         return res.status(400).json({ error: 'Sender not found' });
-      }
-
-      // Check cooldown
-      const lastMessage = await db.execute({
-        sql: 'SELECT created_at FROM ideas WHERE sender_id = ? ORDER BY created_at DESC LIMIT 1',
-        args: [sender_id]
-      });
-
-      if (lastMessage.rows.length > 0) {
-        const lastTime = new Date(lastMessage.rows[0].created_at + 'Z').getTime();
-        const now = Date.now();
-        const elapsed = now - lastTime;
-
-        if (elapsed < COOLDOWN_MS) {
-          const remaining = Math.ceil((COOLDOWN_MS - elapsed) / 60000);
-          return res.status(429).json({
-            error: `Please wait ${remaining} minutes before sending another message`,
-            remainingMs: COOLDOWN_MS - elapsed
-          });
-        }
       }
 
       // Insert new message
