@@ -595,6 +595,16 @@ function Graph({ people, relationships, currentUserId, tooltipData, onShowToolti
     // null = reveal complete, show all
     if (visibleNodeIds === null) {
       revealDataRef.current = null; // Clear snapshot
+      // Apply latest simulation positions so nodes don't teleport
+      fullGraphData.nodes.forEach(n => {
+        const pos = nodePositionsRef.current.get(n.id);
+        if (pos) {
+          n.x = pos.x;
+          n.y = pos.y;
+          n.vx = pos.vx;
+          n.vy = pos.vy;
+        }
+      });
       return fullGraphData;
     }
 
