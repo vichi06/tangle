@@ -10,14 +10,12 @@ function ChatroomPanel({ currentUser, people, onClose }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
-  const [cooldown, setCooldown] = useState({ canSend: true, remainingMs: 0 });
   const [mentionedUsers, setMentionedUsers] = useState([]);
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionIndex, setMentionIndex] = useState(0);
   const [emojiPickerMessageId, setEmojiPickerMessageId] = useState(null);
   const messagesEndRef = useRef(null);
-  const cooldownIntervalRef = useRef(null);
   const inputRef = useRef(null);
   const mentionMenuRef = useRef(null);
   const savedSelectionRef = useRef(null);
@@ -47,49 +45,16 @@ function ChatroomPanel({ currentUser, people, onClose }) {
     }
   }, [currentUser.id]);
 
-  // Check cooldown status
-  const checkCooldown = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/chatroom/user/${currentUser.id}?action=cooldown`);
-      if (!res.ok) throw new Error('Failed to check cooldown');
-      const data = await res.json();
-      setCooldown(data);
-    } catch (err) {
-      console.error('Cooldown check failed:', err);
-    }
-  }, [currentUser.id]);
-
   // Initial load
   useEffect(() => {
     fetchMessages();
-    checkCooldown();
-  }, [fetchMessages, checkCooldown]);
+  }, [fetchMessages]);
 
   // Poll for new messages every 10 seconds
   useEffect(() => {
     const interval = setInterval(fetchMessages, 10000);
     return () => clearInterval(interval);
   }, [fetchMessages]);
-
-  // Cooldown countdown timer
-  useEffect(() => {
-    if (cooldown.remainingMs > 0) {
-      cooldownIntervalRef.current = setInterval(() => {
-        setCooldown(prev => {
-          const newRemaining = Math.max(0, prev.remainingMs - 1000);
-          return {
-            canSend: newRemaining === 0,
-            remainingMs: newRemaining
-          };
-        });
-      }, 1000);
-    }
-    return () => {
-      if (cooldownIntervalRef.current) {
-        clearInterval(cooldownIntervalRef.current);
-      }
-    };
-  }, [cooldown.remainingMs > 0]);
 
   // Auto-scroll to bottom only when message count changes (new message added)
   const prevMessageCountRef = useRef(0);
@@ -99,13 +64,6 @@ function ChatroomPanel({ currentUser, people, onClose }) {
     }
     prevMessageCountRef.current = messages.length;
   }, [messages.length]);
-
-  // Format remaining time
-  const formatCooldown = (ms) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
 
   // Format timestamp
   const formatTime = (timestamp) => {
@@ -424,7 +382,7 @@ function ChatroomPanel({ currentUser, people, onClose }) {
   const handleSubmit = async (e) => {
     e?.preventDefault();
     const text = getPlainText().trim();
-    if (!text || !cooldown.canSend) return;
+    if (!text) return;
 
     setSending(true);
     setError(null);
@@ -445,9 +403,6 @@ function ChatroomPanel({ currentUser, people, onClose }) {
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 429) {
-          setCooldown({ canSend: false, remainingMs: data.remainingMs });
-        }
         throw new Error(data.error);
       }
 
@@ -458,7 +413,6 @@ function ChatroomPanel({ currentUser, people, onClose }) {
       }
       setNewMessage('');
       setMentionedUsers([]);
-      setCooldown({ canSend: false, remainingMs: 30 * 60 * 1000 });
     } catch (err) {
       setError(err.message);
       setTimeout(() => setError(null), 3000);
@@ -542,8 +496,8 @@ function ChatroomPanel({ currentUser, people, onClose }) {
     }
   };
 
-  const isDisabled = !cooldown.canSend || sending;
-  const placeholderText = cooldown.canSend ? "Send a message... (use @ to mention)" : "Wait for cooldown...";
+  const isDisabled = sending;
+  const placeholderText = "Send a message... (use @ to mention)";
 
   return (
     <div className="chatroom-panel">
@@ -661,11 +615,6 @@ function ChatroomPanel({ currentUser, people, onClose }) {
       </div>
 
       <form className="message-form" onSubmit={handleSubmit}>
-        {!cooldown.canSend && (
-          <div className="cooldown-notice">
-            Next message in {formatCooldown(cooldown.remainingMs)}
-          </div>
-        )}
         <div className="message-input-row">
           <div className="textarea-wrapper">
             <div

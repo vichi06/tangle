@@ -39,6 +39,8 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const [newMentionsCount, setNewMentionsCount] = useState(0);
+  const [badgeKey, setBadgeKey] = useState(0);
+  const [mentionBadgeKey, setMentionBadgeKey] = useState(0);
   const [feedRelationship, setFeedRelationship] = useState(null);
   const [selectedProfileId, setSelectedProfileId] = useState(null);
 
@@ -142,7 +144,10 @@ function App() {
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        setNewMessagesCount(data.count);
+        setNewMessagesCount(prev => {
+          if (data.count > prev) setBadgeKey(k => k + 1);
+          return data.count;
+        });
       }
     } catch (err) {
       console.error('Failed to fetch new messages count:', err);
@@ -157,7 +162,10 @@ function App() {
       const res = await fetch(`${API_BASE}/chatroom/user/${currentUser.id}?action=mentions-count`);
       if (res.ok) {
         const data = await res.json();
-        setNewMentionsCount(data.count);
+        setNewMentionsCount(prev => {
+          if (data.count > prev) setMentionBadgeKey(k => k + 1);
+          return data.count;
+        });
       }
     } catch (err) {
       console.error('Failed to fetch mentions count:', err);
@@ -172,7 +180,7 @@ function App() {
       const interval = setInterval(() => {
         fetchNewMessagesCount();
         fetchNewMentionsCount();
-      }, 30000); // Check every 30 seconds
+      }, 20000); // Check every 20 seconds
       return () => clearInterval(interval);
     }
   }, [currentUser, fetchNewMessagesCount, fetchNewMentionsCount]);
@@ -268,10 +276,10 @@ function App() {
           >
             {showChatroomPanel ? 'Close' : 'Chatroom'}
             {!showChatroomPanel && newMentionsCount > 0 && (
-              <span className="notification-badge mention-badge">@{newMentionsCount > 9 ? '9+' : newMentionsCount}</span>
+              <span key={mentionBadgeKey} className="notification-badge mention-badge">@{newMentionsCount > 9 ? '9+' : newMentionsCount}</span>
             )}
             {!showChatroomPanel && newMessagesCount > 0 && (
-              <span className="notification-badge">{newMessagesCount > 9 ? '9+' : newMessagesCount}</span>
+              <span key={badgeKey} className="notification-badge">{newMessagesCount > 9 ? '9+' : newMessagesCount}</span>
             )}
           </button>
           <div className="current-user" onClick={() => setShowProfileEdit(true)}>
