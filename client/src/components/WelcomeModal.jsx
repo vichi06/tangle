@@ -130,8 +130,26 @@ function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
     verifyCode(codeDigits.join(''));
   };
 
-  const confirmSelection = () => {
-    if (pendingSelection) {
+  const confirmSelection = async () => {
+    if (!pendingSelection) return;
+    if (pendingSelection.is_pending) {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE}/people/${pendingSelection.id}/confirm`, {
+          method: 'POST'
+        });
+        if (!res.ok) throw new Error('Failed to confirm profile');
+        await onPersonAdded();
+        onSelect({ ...pendingSelection, is_pending: 0 });
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+        return;
+      } finally {
+        setLoading(false);
+      }
+    } else {
       onSelect(pendingSelection);
     }
   };
@@ -301,14 +319,15 @@ function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
               <span className="pending-badge">Pending Profile</span>
             </div>
             <p className="pending-explain">
-              Someone added you to the graph. Review your relationships and confirm your profile to activate it.
+              Someone added you to the graph. By continuing, you confirm this is your profile.
             </p>
+            {error && <p className="error-message">{error}</p>}
             <div className="confirm-actions">
-              <button className="back-btn" onClick={cancelSelection}>
+              <button className="back-btn" onClick={cancelSelection} disabled={loading}>
                 Back
               </button>
-              <button className="create-btn" onClick={confirmSelection}>
-                Continue
+              <button className="create-btn" onClick={confirmSelection} disabled={loading}>
+                {loading ? 'Confirming...' : 'Confirm'}
               </button>
             </div>
           </div>
