@@ -1365,6 +1365,11 @@ function Graph({ people, relationships, currentUserId, tooltipData, onShowToolti
         if (!event.active && simulationRef.current) simulationRef.current.alphaTarget(0.3).restart();
         d.fx = d.x;
         d.fy = d.y;
+        if (isTouchDevice) {
+          onHideTooltip();
+          touchTooltipNodeIdRef.current = null;
+          highlightNode(d, true);
+        }
       })
       .on('drag', (event, d) => {
         d.fx = event.x;
@@ -1374,6 +1379,9 @@ function Graph({ people, relationships, currentUserId, tooltipData, onShowToolti
         if (!event.active && simulationRef.current) simulationRef.current.alphaTarget(0);
         d.fx = null;
         d.fy = null;
+        if (isTouchDevice) {
+          clearHighlightsRef.current?.();
+        }
       });
 
     node.call(drag);
