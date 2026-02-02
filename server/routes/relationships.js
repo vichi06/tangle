@@ -61,11 +61,9 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'Relationship already exists' });
     }
 
-    // Determine pending status: if either person is pending (invited), skip relationship pending
-    // (they'll confirm their profile first). Otherwise, mark relationship as pending.
-    const eitherPersonPending = !!(person1.is_pending || person2.is_pending);
-    const isPending = eitherPersonPending ? 0 : 1;
-    const pendingBy = isPending ? (requester_id || person1_id) : null;
+    // All new relationships are pending until the other person accepts
+    const isPending = 1;
+    const pendingBy = requester_id || person1_id;
 
     const stmt = db.prepare(
       'INSERT INTO relationships (person1_id, person2_id, intensity, date, context, is_pending, pending_by) VALUES (?, ?, ?, ?, ?, ?, ?)'

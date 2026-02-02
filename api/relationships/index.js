@@ -62,10 +62,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Relationship already exists' });
       }
 
-      // Determine pending status: if either person is pending (invited), skip relationship pending
-      const eitherPersonPending = !!(person1.rows[0].is_pending || person2.rows[0].is_pending);
-      const isPending = eitherPersonPending ? 0 : 1;
-      const pendingBy = isPending ? (requester_id || person1_id) : null;
+      // All new relationships are pending until the other person accepts
+      const isPending = 1;
+      const pendingBy = requester_id || person1_id;
 
       const result = await db.execute({
         sql: 'INSERT INTO relationships (person1_id, person2_id, intensity, date, context, is_pending, pending_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
