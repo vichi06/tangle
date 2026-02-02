@@ -170,7 +170,8 @@
   position: relative;
 }
 
-.chatroom-toggle {
+.chatroom-toggle,
+.kisses-toggle {
   position: relative;
 }
 
