@@ -244,6 +244,7 @@ function App() {
         people={people}
         relationships={relationships}
         currentUserId={currentUser.id}
+        tooltipData={tooltip}
         onShowTooltip={handleShowTooltip}
         onHideTooltip={handleHideTooltip}
         onRefresh={fetchData}

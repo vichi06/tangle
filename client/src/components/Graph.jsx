@@ -480,7 +480,7 @@ function generateRevealOrder(nodes, links, startNodeId) {
   return order; // Array of waves (each wave = array of node IDs)
 }
 
-function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTooltip, onRefresh, onOpenFeed, onNodeClick }) {
+function Graph({ people, relationships, currentUserId, tooltipData, onShowTooltip, onHideTooltip, onRefresh, onOpenFeed, onNodeClick }) {
   const svgRef = useRef(null);
   const simulationRef = useRef(null);
   const zoomRef = useRef(null);
@@ -495,6 +495,16 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
   const animatedLinksRef = useRef(new Set()); // Track which links have been animated
 
   // Progressive reveal: false = not started (show nothing), Set = during reveal, null = complete (show all)
+  const touchTooltipNodeIdRef = useRef(null);
+  const clearHighlightsRef = useRef(null);
+
+  // Clear graph highlights when tooltip is dismissed externally (e.g. overlay tap)
+  useEffect(() => {
+    if (!tooltipData) {
+      clearHighlightsRef.current?.();
+    }
+  }, [tooltipData]);
+
   const [visibleNodeIds, setVisibleNodeIds] = useState(false);
   const [positionsReady, setPositionsReady] = useState(false);
   const [showRefreshMessage, setShowRefreshMessage] = useState(false);
@@ -811,7 +821,6 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
 
     // Detect touch device
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    let touchTooltipNodeId = null;
 
     // Helper to show node tooltip
     const showNodeTooltip = (event, d) => {
@@ -886,9 +895,7 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       if (isTouchDevice) {
         svg.on('click', (event) => {
           if (event.target === svgRef.current) {
-            touchTooltipNodeId = null;
-            g.selectAll('.node').classed('highlighted', false);
-            g.selectAll('.link').classed('highlighted connected dimmed', false);
+            clearHighlightsRef.current?.();
             onHideTooltip();
           }
         });
@@ -1306,11 +1313,18 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
       }
     };
 
+    // Store cleanup function in ref so tooltip overlay dismiss can use it
+    clearHighlightsRef.current = () => {
+      touchTooltipNodeIdRef.current = null;
+      node.classed('highlighted', false).attr('data-distance', null);
+      link.classed('connected dimmed', false).attr('data-distance', null);
+      link.style('stroke', null);
+    };
+
     // Node click handler - opens profile feed modal
     const handleNodeClick = (event, d) => {
       event.stopPropagation();
-      node.classed('highlighted', false);
-      link.classed('connected dimmed', false);
+      clearHighlightsRef.current?.();
       onHideTooltip();
       if (onNodeClick) {
         onNodeClick(d.id);
@@ -1320,15 +1334,14 @@ function Graph({ people, relationships, currentUserId, onShowTooltip, onHideTool
     if (isTouchDevice) {
       node.on('click', (event, d) => {
         event.stopPropagation();
-        if (touchTooltipNodeId === d.id) {
+        if (touchTooltipNodeIdRef.current === d.id) {
           // Second tap on same node — open profile
-          touchTooltipNodeId = null;
-          highlightNode(d, false);
+          clearHighlightsRef.current?.();
           onHideTooltip();
           if (onNodeClick) onNodeClick(d.id);
         } else {
           // First tap — show tooltip
-          touchTooltipNodeId = d.id;
+          touchTooltipNodeIdRef.current = d.id;
           highlightNode(d, true);
           showNodeTooltip(event, d);
         }
