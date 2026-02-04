@@ -231,3 +231,22 @@
   padding: 4px 12px;
   font-size: 12px;
 }
+
+@media (max-width: 540px) {
+  /* Hide first name and edit hint on mobile */
+  .current-user span {
+    display: none;
+  }
+
+  /* Symmetrical padding since text is hidden */
+  .current-user {
+    padding: 8px;
+  }
+
+  /* Center profile button in top bar */
+  .current-user {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
