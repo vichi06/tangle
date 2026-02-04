@@ -366,6 +366,12 @@
   gap: 6px;
 }
 
+.item-actions .confirm-btn {
+  width: auto;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
 .edit-btn,
 .remove-btn {
   padding: 6px 12px;
