@@ -37,6 +37,9 @@ function App() {
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [tooltip, setTooltip] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [chatroomMessages, setChatroomMessages] = useState([]);
+  const [chatroomLoading, setChatroomLoading] = useState(true);
+  const chatroomScrollRef = useRef(null); // saved scroll position across open/close
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const [newMentionsCount, setNewMentionsCount] = useState(0);
   const [badgeKey, setBadgeKey] = useState(0);
@@ -148,6 +151,21 @@ function App() {
     return currentUser ? `${CHATROOM_LAST_SEEN_KEY}_${currentUser.id}` : null;
   }, [currentUser]);
 
+  // Fetch chatroom messages
+  const fetchChatroomMessages = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const res = await fetch(`${API_BASE}/chatroom?userId=${currentUser.id}`);
+      if (!res.ok) throw new Error('Failed to fetch messages');
+      const data = await res.json();
+      setChatroomMessages(data);
+    } catch (err) {
+      console.error('Failed to fetch chatroom messages:', err);
+    } finally {
+      setChatroomLoading(false);
+    }
+  }, [currentUser]);
+
   // Fetch count of new messages since user's last visit
   const fetchNewMessagesCount = useCallback(async () => {
     if (!currentUser) return;
@@ -190,18 +208,20 @@ function App() {
     }
   }, [currentUser]);
 
-  // Fetch new messages and mentions count when user is set and periodically
+  // Fetch chatroom messages, new messages count, and mentions count when user is set and periodically
   useEffect(() => {
     if (currentUser) {
+      fetchChatroomMessages();
       fetchNewMessagesCount();
       fetchNewMentionsCount();
       const interval = setInterval(() => {
+        fetchChatroomMessages();
         fetchNewMessagesCount();
         fetchNewMentionsCount();
       }, 20000); // Check every 20 seconds
       return () => clearInterval(interval);
     }
-  }, [currentUser, fetchNewMessagesCount, fetchNewMentionsCount]);
+  }, [currentUser, fetchChatroomMessages, fetchNewMessagesCount, fetchNewMentionsCount]);
 
   // Handle opening Chatroom panel - mark as seen
   const handleOpenChatroomPanel = async () => {
@@ -336,6 +356,10 @@ function App() {
         <ChatroomPanel
           currentUser={currentUser}
           people={people}
+          messages={chatroomMessages}
+          setMessages={setChatroomMessages}
+          loading={chatroomLoading}
+          savedScrollPos={chatroomScrollRef}
           onClose={() => setShowChatroomPanel(false)}
         />
       )}

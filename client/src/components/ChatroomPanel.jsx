@@ -1,13 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import EmojiPicker from './EmojiPicker';
 import './ChatroomPanel.css';
 
 const API_BASE = '/api';
 
-function ChatroomPanel({ currentUser, people, onClose }) {
-  const [messages, setMessages] = useState([]);
+function ChatroomPanel({ currentUser, people, messages, setMessages, loading, savedScrollPos, onClose }) {
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [mentionedUsers, setMentionedUsers] = useState([]);
@@ -31,39 +29,39 @@ function ChatroomPanel({ currentUser, people, onClose }) {
     userNameMap.current = map;
   }, [people]);
 
-  // Fetch all messages with user's votes
-  const fetchMessages = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/chatroom?userId=${currentUser.id}`);
-      if (!res.ok) throw new Error('Failed to fetch messages');
-      const data = await res.json();
-      setMessages(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser.id]);
-
-  // Initial load
-  useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
-
-  // Poll for new messages every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(fetchMessages, 10000);
-    return () => clearInterval(interval);
-  }, [fetchMessages]);
-
-  // Auto-scroll to bottom only when message count changes (new message added)
+  const listRef = useRef(null);
   const prevMessageCountRef = useRef(0);
+  const hasRestoredScroll = useRef(false);
+
+  // On first mount: restore saved scroll position, or scroll to bottom on first-ever open
+  useLayoutEffect(() => {
+    if (loading || hasRestoredScroll.current) return;
+    hasRestoredScroll.current = true;
+    if (savedScrollPos.current != null) {
+      // Reopen — restore saved position
+      if (listRef.current) listRef.current.scrollTop = savedScrollPos.current;
+    } else {
+      // First-ever open — scroll to bottom
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMessageCountRef.current = messages.length;
+  }, [loading, messages.length, savedScrollPos]);
+
+  // Scroll to bottom when new messages arrive after initial mount
   useEffect(() => {
+    if (!hasRestoredScroll.current) return;
     if (messages.length > prevMessageCountRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
     prevMessageCountRef.current = messages.length;
   }, [messages.length]);
+
+  // Save scroll position on unmount (useLayoutEffect so cleanup runs before DOM removal)
+  useLayoutEffect(() => {
+    return () => {
+      if (listRef.current) savedScrollPos.current = listRef.current.scrollTop;
+    };
+  }, [savedScrollPos]);
 
   // Format timestamp
   const formatTime = (timestamp) => {
@@ -460,7 +458,6 @@ function ChatroomPanel({ currentUser, people, onClose }) {
           : m
       ));
     } catch (err) {
-      fetchMessages();
       setError('Failed to vote');
       setTimeout(() => setError(null), 3000);
     }
@@ -510,7 +507,7 @@ function ChatroomPanel({ currentUser, people, onClose }) {
         <div className="panel-message error">{error}</div>
       )}
 
-      <div className="chatroom-list">
+      <div className="chatroom-list" ref={listRef}>
         {loading ? (
           <div className="chatroom-loading">Loading...</div>
         ) : messages.length === 0 ? (
