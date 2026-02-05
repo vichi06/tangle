@@ -34,6 +34,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
   const [confirmDeleteProfile, setConfirmDeleteProfile] = useState(false);
   const [invitePerson, setInvitePerson] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [addWarning, setAddWarning] = useState(null);
 
   // The user whose relationships we're managing (admin can change this)
   const managedUser = useMemo(() => {
@@ -91,6 +92,28 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
   const showMessage = (text, isError = false) => {
     setMessage({ text, isError });
     setTimeout(() => setMessage(null), 3000);
+  };
+
+  const getAddRelationshipBlocker = () => {
+    if (pendingIncoming.length > 0) {
+      return 'Please respond to your pending requests before adding new relationships.';
+    }
+    if (!managedUser.avatar) {
+      return 'Please add a profile picture before adding new relationships.';
+    }
+    return null;
+  };
+
+  const handleAddRelationClick = () => {
+    const blocker = getAddRelationshipBlocker();
+    if (blocker) {
+      setAddWarning(blocker);
+      setTimeout(() => setAddWarning(null), 4000);
+      return;
+    }
+    setSearchQuery('');
+    setSelectedPersonId('');
+    setMode('add');
   };
 
 
@@ -474,9 +497,15 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
               )}
             </div>
 
+            {addWarning && (
+              <div className="panel-message error add-warning">
+                {addWarning}
+              </div>
+            )}
+
             <button
               className="add-connection-btn"
-              onClick={() => { setSearchQuery(''); setSelectedPersonId(''); setMode('add'); }}
+              onClick={handleAddRelationClick}
             >
               + Add a relation
             </button>
