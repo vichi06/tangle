@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import './InviteModal.css';
 
 function InviteModal({ person, onClose, title, description }) {
   const [copied, setCopied] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(onClose, 200);
+  }, [onClose]);
 
   const inviteUrl = `${window.location.origin}?invite=${person.id}`;
 
@@ -25,8 +31,8 @@ function InviteModal({ person, onClose, title, description }) {
   };
 
   return (
-    <div className="invite-overlay" onClick={onClose}>
-      <div className="invite-modal" onClick={e => e.stopPropagation()}>
+    <div className={`invite-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
+      <div className={`invite-modal ${isClosing ? 'closing' : ''}`} onClick={e => e.stopPropagation()}>
         <p className="invite-title">
           {title || `Added ${person.first_name} and linked!`}
         </p>
@@ -61,7 +67,7 @@ function InviteModal({ person, onClose, title, description }) {
           </button>
         </div>
 
-        <button className="invite-close-btn" onClick={onClose}>
+        <button className="invite-close-btn" onClick={handleClose}>
           Close
         </button>
       </div>

@@ -34,6 +34,37 @@
   }
 }
 
+@keyframes profileFeedOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes profileFeedOverlayOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.profile-feed-overlay.closing {
+  animation: profileFeedOverlayOut 0.2s ease-out forwards;
+}
+
+.profile-feed-modal.closing {
+  animation: profileFeedOut 0.2s ease-out forwards;
+}
+
 /* Loading & Error states */
 .profile-feed-loading,
 .profile-feed-error {

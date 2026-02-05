@@ -31,6 +31,37 @@
   }
 }
 
+@keyframes inviteOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes inviteOverlayOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.invite-overlay.closing {
+  animation: inviteOverlayOut 0.2s ease-out forwards;
+}
+
+.invite-modal.closing {
+  animation: inviteOut 0.2s ease-out forwards;
+}
+
 .invite-title {
   font-size: 16px;
   font-weight: 600;

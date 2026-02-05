@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import AvatarUpload from './AvatarUpload';
 import ConfirmModal from './ConfirmModal';
 import './ProfileEdit.css';
@@ -9,6 +9,12 @@ function ProfileEdit({ user, people, currentUser, onUpdate, onClose, onDelete })
   // For admins, allow selecting which user to edit
   const [selectedUserId, setSelectedUserId] = useState(user.id);
   const isAdmin = !!currentUser?.is_admin;
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(onClose, 200);
+  }, [onClose]);
 
   // The user being edited
   const editingUser = useMemo(() => {
@@ -61,7 +67,7 @@ function ProfileEdit({ user, people, currentUser, onUpdate, onClose, onDelete })
 
       const updated = await res.json();
       onUpdate(updated);
-      onClose();
+      handleClose();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -85,8 +91,8 @@ function ProfileEdit({ user, people, currentUser, onUpdate, onClose, onDelete })
   const canDelete = isAdmin && editingUser.id !== currentUser.id;
 
   return (
-    <div className="profile-edit-overlay" onClick={onClose}>
-      <div className="profile-edit-modal" onClick={e => e.stopPropagation()}>
+    <div className={`profile-edit-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
+      <div className={`profile-edit-modal ${isClosing ? 'closing' : ''}`} onClick={e => e.stopPropagation()}>
         <h2>Edit Profile</h2>
 
         {isAdmin && people && (
@@ -145,7 +151,7 @@ function ProfileEdit({ user, people, currentUser, onUpdate, onClose, onDelete })
         {error && <p className="profile-error">{error}</p>}
 
         <div className="profile-actions">
-          <button className="cancel-btn" onClick={onClose}>
+          <button className="cancel-btn" onClick={handleClose}>
             Cancel
           </button>
           <button className="save-btn" onClick={handleSave} disabled={loading}>

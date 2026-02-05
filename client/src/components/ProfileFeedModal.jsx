@@ -30,6 +30,12 @@ function ProfileFeedModal({ profileId, currentUser, people, onClose, onRelations
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionIndex, setMentionIndex] = useState(0);
   const [expandedImage, setExpandedImage] = useState(null);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(onClose, 200);
+  }, [onClose]);
 
   const commentsEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -528,8 +534,8 @@ function ProfileFeedModal({ profileId, currentUser, people, onClose, onRelations
 
   if (loading) {
     return (
-      <div className="profile-feed-overlay" onClick={onClose}>
-        <div className="profile-feed-modal" onClick={e => e.stopPropagation()}>
+      <div className={`profile-feed-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
+        <div className={`profile-feed-modal ${isClosing ? 'closing' : ''}`} onClick={e => e.stopPropagation()}>
           <div className="profile-feed-loading">Loading...</div>
         </div>
       </div>
@@ -538,8 +544,8 @@ function ProfileFeedModal({ profileId, currentUser, people, onClose, onRelations
 
   if (!profile) {
     return (
-      <div className="profile-feed-overlay" onClick={onClose}>
-        <div className="profile-feed-modal" onClick={e => e.stopPropagation()}>
+      <div className={`profile-feed-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
+        <div className={`profile-feed-modal ${isClosing ? 'closing' : ''}`} onClick={e => e.stopPropagation()}>
           <div className="profile-feed-error">Profile not found</div>
         </div>
       </div>
@@ -547,8 +553,8 @@ function ProfileFeedModal({ profileId, currentUser, people, onClose, onRelations
   }
 
   return (
-    <div className="profile-feed-overlay" onClick={onClose}>
-      <div className="profile-feed-modal" onClick={e => e.stopPropagation()}>
+    <div className={`profile-feed-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
+      <div className={`profile-feed-modal ${isClosing ? 'closing' : ''}`} onClick={e => e.stopPropagation()}>
         {/* Header with profile info */}
         <div className="profile-feed-header">
           <div className="profile-feed-info">
@@ -570,7 +576,7 @@ function ProfileFeedModal({ profileId, currentUser, people, onClose, onRelations
               )}
             </div>
           </div>
-          <button className="profile-feed-close-btn" onClick={onClose}>×</button>
+          <button className="profile-feed-close-btn" onClick={handleClose}>×</button>
         </div>
 
         {/* Relationships section */}

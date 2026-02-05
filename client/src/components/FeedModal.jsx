@@ -31,6 +31,12 @@ function FeedModal({ relationship, currentUser, people, onClose }) {
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionIndex, setMentionIndex] = useState(0);
   const [expandedImage, setExpandedImage] = useState(null);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(onClose, 200);
+  }, [onClose]);
 
   const commentsEndRef = useRef(null);
   const cooldownIntervalRef = useRef(null);
@@ -568,8 +574,8 @@ function FeedModal({ relationship, currentUser, people, onClose }) {
   const placeholderText = cooldown.canSend ? "Add a comment... (use @ to mention)" : "Wait for cooldown...";
 
   return (
-    <div className="feed-overlay" onClick={onClose}>
-      <div className="feed-modal" onClick={e => e.stopPropagation()}>
+    <div className={`feed-overlay ${isClosing ? 'closing' : ''}`} onClick={handleClose}>
+      <div className={`feed-modal ${isClosing ? 'closing' : ''}`} onClick={e => e.stopPropagation()}>
         <div className="feed-header">
           <div className="feed-relationship-info">
             <div className="feed-people">
@@ -615,7 +621,7 @@ function FeedModal({ relationship, currentUser, people, onClose }) {
               </div>
             )}
           </div>
-          <button className="feed-close-btn" onClick={onClose}>×</button>
+          <button className="feed-close-btn" onClick={handleClose}>×</button>
         </div>
 
         {error && (

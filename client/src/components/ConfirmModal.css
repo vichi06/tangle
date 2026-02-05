@@ -30,6 +30,37 @@
   }
 }
 
+@keyframes modalOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes overlayOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.confirm-overlay.closing {
+  animation: overlayOut 0.2s ease-out forwards;
+}
+
+.confirm-modal.closing {
+  animation: modalOut 0.2s ease-out forwards;
+}
+
 .confirm-message {
   font-size: 15px;
   color: var(--text-primary);
