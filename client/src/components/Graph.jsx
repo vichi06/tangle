@@ -8,9 +8,9 @@ const MAX_NODE_SIZE = 60;
 const DEGREE_WEIGHT = 0.4;
 const BETWEENNESS_WEIGHT = 0.6;
 
-// Progressive reveal timing
-const REVEAL_WAVE_DELAY = 500;      // ms between distance waves
-const REVEAL_NODE_STAGGER = 80;     // ms between nodes in same wave
+// Progressive reveal timing - target total duration regardless of graph size
+const TARGET_REVEAL_DURATION = 3500; // Total animation time in ms
+const WAVE_STAGGER_RATIO = 6.25;     // waveDelay / nodeStagger ratio
 
 // Force simulation parameters (non-configurable)
 const LINK_STRENGTH = 0.8;
@@ -713,9 +713,6 @@ function Graph({ people, relationships, currentUserId, tooltipData, onShowToolti
     // Start with just the user node
     setVisibleNodeIds(new Set([userNodeId]));
 
-    // Schedule remaining nodes in waves
-    let delay = REVEAL_WAVE_DELAY;
-
     // Process remaining nodes in first wave (if any besides user)
     const remainingFirstWave = firstWave.filter(id => id !== userNodeId);
 
@@ -724,9 +721,22 @@ function Graph({ people, relationships, currentUserId, tooltipData, onShowToolti
       ? [remainingFirstWave, ...revealOrder.slice(1)]
       : revealOrder.slice(1);
 
+    // Calculate timing to hit target duration regardless of graph size
+    // Total time = numWaves * waveDelay + totalNodesToAnimate * nodeStagger
+    // With waveDelay = nodeStagger * WAVE_STAGGER_RATIO:
+    // TARGET = numWaves * (RATIO * x) + totalNodes * x
+    // x = TARGET / (RATIO * numWaves + totalNodes)
+    const totalNodesToAnimate = wavesToAnimate.reduce((sum, w) => sum + w.length, 0);
+    const numWaves = wavesToAnimate.length;
+    const nodeStagger = Math.max(10, TARGET_REVEAL_DURATION / (WAVE_STAGGER_RATIO * numWaves + totalNodesToAnimate));
+    const waveDelay = nodeStagger * WAVE_STAGGER_RATIO;
+
+    // Schedule remaining nodes in waves
+    let delay = waveDelay;
+
     wavesToAnimate.forEach((wave) => {
       wave.forEach((nodeId, nodeIndex) => {
-        const nodeDelay = delay + nodeIndex * REVEAL_NODE_STAGGER;
+        const nodeDelay = delay + nodeIndex * nodeStagger;
         const timeout = setTimeout(() => {
           setVisibleNodeIds(prev => {
             const next = new Set(prev);
@@ -736,7 +746,7 @@ function Graph({ people, relationships, currentUserId, tooltipData, onShowToolti
         }, nodeDelay);
         revealTimeoutsRef.current.push(timeout);
       });
-      delay += REVEAL_WAVE_DELAY + wave.length * REVEAL_NODE_STAGGER;
+      delay += waveDelay + wave.length * nodeStagger;
     });
 
     // After all nodes revealed, mark as complete
