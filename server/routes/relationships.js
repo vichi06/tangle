@@ -85,17 +85,17 @@ router.post('/', (req, res) => {
       WHERE r.id = ?
     `).get(result.lastInsertRowid);
 
-    // Insert TanTan bot system message
-    try {
-      const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
-      if (bot) {
-        const msg = isPending
-          ? `⏳ ${relationship.person1_first_name} and ${relationship.person2_first_name} have a pending connection!`
-          : `🎉 ${relationship.person1_first_name} and ${relationship.person2_first_name} are now connected!`;
-        db.prepare('INSERT INTO ideas (sender_id, content) VALUES (?, ?)').run(bot.id, msg);
+    // Insert TanTan bot system message (only for confirmed relationships)
+    if (!isPending) {
+      try {
+        const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
+        if (bot) {
+          const msg = `🎉 ${relationship.person1_first_name} and ${relationship.person2_first_name} are now connected!`;
+          db.prepare('INSERT INTO ideas (sender_id, content) VALUES (?, ?)').run(bot.id, msg);
+        }
+      } catch (botErr) {
+        console.error('Failed to insert bot message:', botErr);
       }
-    } catch (botErr) {
-      console.error('Failed to insert bot message:', botErr);
     }
 
     res.status(201).json(relationship);

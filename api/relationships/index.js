@@ -89,21 +89,21 @@ export default async function handler(req, res) {
         args: [result.lastInsertRowid]
       });
 
-      // Insert TanTan bot system message
-      try {
-        const botResult = await db.execute("SELECT id FROM people WHERE is_system = 1");
-        if (botResult.rows.length > 0) {
-          const rel = relationship.rows[0];
-          const msg = isPending
-            ? `⏳ ${rel.person1_first_name} and ${rel.person2_first_name} have a pending connection!`
-            : `🎉 ${rel.person1_first_name} and ${rel.person2_first_name} are now connected!`;
-          await db.execute({
-            sql: 'INSERT INTO ideas (sender_id, content) VALUES (?, ?)',
-            args: [botResult.rows[0].id, msg]
-          });
+      // Insert TanTan bot system message (only for confirmed relationships)
+      if (!isPending) {
+        try {
+          const botResult = await db.execute("SELECT id FROM people WHERE is_system = 1");
+          if (botResult.rows.length > 0) {
+            const rel = relationship.rows[0];
+            const msg = `🎉 ${rel.person1_first_name} and ${rel.person2_first_name} are now connected!`;
+            await db.execute({
+              sql: 'INSERT INTO ideas (sender_id, content) VALUES (?, ?)',
+              args: [botResult.rows[0].id, msg]
+            });
+          }
+        } catch (botErr) {
+          console.error('Failed to insert bot message:', botErr);
         }
-      } catch (botErr) {
-        console.error('Failed to insert bot message:', botErr);
       }
 
       return res.status(201).json(relationship.rows[0]);
