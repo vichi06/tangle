@@ -319,11 +319,11 @@ function App() {
               <span key={badgeKey} className="notification-badge">{newMessagesCount > 9 ? '9+' : newMessagesCount}</span>
             )}
           </button>
-          <div className="current-user" onClick={() => setShowProfileEdit(true)}>
+          <div className="top-bar-current-user" onClick={() => setShowProfileEdit(true)}>
             {currentUser.avatar ? (
-              <img src={currentUser.avatar} alt="" className="current-user-avatar" />
+              <img src={currentUser.avatar} alt="" className="top-bar-current-user-avatar" />
             ) : (
-              <div className="current-user-avatar-placeholder">
+              <div className="top-bar-current-user-avatar-placeholder">
                 {currentUser.first_name.charAt(0)}
               </div>
             )}

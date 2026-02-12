@@ -107,7 +107,7 @@
   background: var(--text-primary);
 }
 
-.current-user {
+.top-bar-current-user {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -119,7 +119,7 @@
   transition: border-color 0.2s ease;
 }
 
-.current-user:hover {
+.top-bar-current-user:hover {
   border-color: var(--text-secondary);
 }
 
@@ -133,19 +133,19 @@
   transition: opacity 0.2s ease, max-width 0.3s ease;
 }
 
-.current-user:hover .edit-hint {
+.top-bar-current-user:hover .edit-hint {
   opacity: 1;
   max-width: 100px;
 }
 
-.current-user-avatar {
+.top-bar-current-user-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.current-user-avatar-placeholder {
+.top-bar-current-user-avatar-placeholder {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -158,7 +158,7 @@
   color: var(--text-secondary);
 }
 
-.current-user span {
+.top-bar-current-user span {
   font-size: 14px;
   font-weight: 500;
 }
@@ -234,17 +234,17 @@
 
 @media (max-width: 540px) {
   /* Hide first name and edit hint on mobile */
-  .current-user span {
+  .top-bar-current-user span {
     display: none;
   }
 
   /* Symmetrical padding since text is hidden */
-  .current-user {
+  .top-bar-current-user {
     padding: 8px;
   }
 
   /* Center profile button in top bar */
-  .current-user {
+  .top-bar-current-user {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
