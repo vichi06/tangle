@@ -1348,7 +1348,12 @@ function Graph({ people, relationships, currentUserId, tooltipData, onShowToolti
     if (isTouchDevice) {
       node.on('click', (event, d) => {
         event.stopPropagation();
-        if (touchTooltipNodeIdRef.current === d.id) {
+        if (d.isPending) {
+          // Pending nodes — open invite modal directly
+          clearHighlightsRef.current?.();
+          onHideTooltip();
+          if (onNodeClick) onNodeClick(d.id);
+        } else if (touchTooltipNodeIdRef.current === d.id) {
           // Second tap on same node — open profile
           clearHighlightsRef.current?.();
           onHideTooltip();
