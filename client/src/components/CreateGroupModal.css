@@ -98,6 +98,15 @@
   border-color: var(--text-secondary);
 }
 
+.code-display.copied {
+  border-color: #4caf50;
+  background: color-mix(in srgb, #4caf50 10%, var(--bg-primary));
+}
+
+.code-display.copied .copy-hint {
+  color: #4caf50;
+}
+
 .code-display code {
   font-size: 1.1rem;
   font-weight: 600;

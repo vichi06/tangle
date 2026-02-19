@@ -31,9 +31,13 @@ function CreateGroupModal({ onCreated, onClose }) {
     }
   };
 
+  const [copied, setCopied] = useState(false);
+
   const handleCopyCode = () => {
     if (createdGroup) {
       navigator.clipboard.writeText(createdGroup.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -44,9 +48,9 @@ function CreateGroupModal({ onCreated, onClose }) {
           <h2>Group Created!</h2>
           <p className="created-group-name">{createdGroup.name}</p>
           <p className="share-message">Share this code with others so they can join:</p>
-          <div className="code-display" onClick={handleCopyCode} title="Click to copy">
+          <div className={`code-display${copied ? ' copied' : ''}`} onClick={handleCopyCode} title="Click to copy">
             <code>{createdGroup.code}</code>
-            <span className="copy-hint">Click to copy</span>
+            <span className="copy-hint">{copied ? 'Copied!' : 'Click to copy'}</span>
           </div>
           <button className="continue-btn" onClick={() => onCreated(createdGroup)}>
             Continue to group
