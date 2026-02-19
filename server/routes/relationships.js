@@ -160,9 +160,11 @@ router.post('/:id', (req, res) => {
     try {
       const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
       if (bot) {
-        db.prepare('INSERT INTO ideas (sender_id, content) VALUES (?, ?)').run(
+        const personGroup = db.prepare('SELECT group_id FROM people WHERE id = ?').get(relationship.person1_id);
+        db.prepare('INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)').run(
           bot.id,
-          `🎉 ${relationship.person1_first_name} and ${relationship.person2_first_name} are now connected!`
+          `🎉 ${relationship.person1_first_name} and ${relationship.person2_first_name} are now connected!`,
+          personGroup?.group_id || null
         );
       }
     } catch (botErr) {
