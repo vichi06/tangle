@@ -29,13 +29,13 @@ export default async function handler(req, res) {
           if (group_id) {
             if (since) {
               result = await db.execute({
-                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.created_at > ? AND i.sender_id != ? AND (p.group_id = ? OR p.is_system = 1)',
-                args: [since, userId, group_id]
+                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.created_at > ? AND i.sender_id != ? AND (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))',
+                args: [since, userId, group_id, group_id]
               });
             } else {
               result = await db.execute({
-                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.sender_id != ? AND (p.group_id = ? OR p.is_system = 1)',
-                args: [userId, group_id]
+                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.sender_id != ? AND (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))',
+                args: [userId, group_id, group_id]
               });
             }
           } else {
@@ -58,8 +58,8 @@ export default async function handler(req, res) {
           let result;
           if (group_id) {
             result = await db.execute({
-              sql: 'SELECT COUNT(*) as count FROM message_mentions mm JOIN ideas i ON mm.message_id = i.id JOIN people p ON i.sender_id = p.id WHERE mm.mentioned_user_id = ? AND mm.seen = 0 AND (p.group_id = ? OR p.is_system = 1)',
-              args: [userId, group_id]
+              sql: 'SELECT COUNT(*) as count FROM message_mentions mm JOIN ideas i ON mm.message_id = i.id JOIN people p ON i.sender_id = p.id WHERE mm.mentioned_user_id = ? AND mm.seen = 0 AND (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))',
+              args: [userId, group_id, group_id]
             });
           } else {
             result = await db.execute({
@@ -74,13 +74,26 @@ export default async function handler(req, res) {
       }
 
       if (req.method === 'POST') {
-        const { action } = req.body;
+        const { action, group_id } = req.body;
 
         if (action === 'mark-seen') {
-          await db.execute({
-            sql: 'UPDATE message_mentions SET seen = 1 WHERE mentioned_user_id = ? AND seen = 0',
-            args: [userId]
-          });
+          if (group_id) {
+            await db.execute({
+              sql: `UPDATE message_mentions SET seen = 1
+                    WHERE mentioned_user_id = ? AND seen = 0
+                    AND message_id IN (
+                      SELECT i.id FROM ideas i
+                      JOIN people p ON i.sender_id = p.id
+                      WHERE (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))
+                    )`,
+              args: [userId, group_id, group_id]
+            });
+          } else {
+            await db.execute({
+              sql: 'UPDATE message_mentions SET seen = 1 WHERE mentioned_user_id = ? AND seen = 0',
+              args: [userId]
+            });
+          }
           return res.json({ success: true });
         }
 
@@ -239,8 +252,8 @@ export default async function handler(req, res) {
         `;
         const ideasArgs = [];
         if (groupId) {
-          ideasQuery += ' WHERE (p.group_id = ? OR p.is_system = 1)';
-          ideasArgs.push(groupId);
+          ideasQuery += ' WHERE (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))';
+          ideasArgs.push(groupId, groupId);
         }
         ideasQuery += ' GROUP BY i.id ORDER BY i.created_at ASC';
         const result = groupId
