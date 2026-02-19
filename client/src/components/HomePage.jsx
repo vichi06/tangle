@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CreateGroupModal from './CreateGroupModal';
+import ConfirmModal from './ConfirmModal';
 import { getJoinedGroups, addJoinedGroup, removeJoinedGroup } from '../utils/groups';
 import './HomePage.css';
 
@@ -15,6 +16,7 @@ function HomePage() {
   const [joining, setJoining] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [copied, setCopied] = useState(null);
+  const [confirmLeaveCode, setConfirmLeaveCode] = useState(null);
 
   const fetchGroups = async () => {
     const joinedCodes = getJoinedGroups();
@@ -118,7 +120,7 @@ function HomePage() {
                     className="group-leave-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleLeaveGroup(group.code);
+                      setConfirmLeaveCode(group.code);
                     }}
                     title="Leave group"
                   >
@@ -174,6 +176,14 @@ function HomePage() {
         <CreateGroupModal
           onCreated={handleGroupCreated}
           onClose={() => setShowCreateModal(false)}
+        />
+      )}
+
+      {confirmLeaveCode && (
+        <ConfirmModal
+          message={`Leave "${groups.find(g => g.code === confirmLeaveCode)?.name}"? You can rejoin later with the group code.`}
+          onConfirm={() => { handleLeaveGroup(confirmLeaveCode); setConfirmLeaveCode(null); }}
+          onCancel={() => setConfirmLeaveCode(null)}
         />
       )}
     </div>
