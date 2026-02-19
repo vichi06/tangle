@@ -235,7 +235,7 @@ function GroupView() {
           await fetch(`${API_BASE}/chatroom/user/${currentUser.id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'mark-seen' })
+            body: JSON.stringify({ action: 'mark-seen', group_id: groupId })
           });
           setNewMentionsCount(0);
         } catch (err) {
