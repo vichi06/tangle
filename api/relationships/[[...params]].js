@@ -244,11 +244,14 @@ export default async function handler(req, res) {
         const botResult = await db.execute("SELECT id FROM people WHERE is_system = 1");
         if (botResult.rows.length > 0) {
           const r = result.rows[0];
+          const groupResult = await db.execute({ sql: 'SELECT group_id FROM people WHERE id = ?', args: [r.person1_id] });
+          const groupId = groupResult.rows[0]?.group_id || null;
           await db.execute({
-            sql: 'INSERT INTO ideas (sender_id, content) VALUES (?, ?)',
+            sql: 'INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)',
             args: [
               botResult.rows[0].id,
-              `🎉 ${r.person1_first_name} and ${r.person2_first_name} are now connected!`
+              `🎉 ${r.person1_first_name} and ${r.person2_first_name} are now connected!`,
+              groupId
             ]
           });
         }
