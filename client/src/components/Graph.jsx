@@ -1,6 +1,9 @@
 import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as d3 from 'd3';
 import { calculateMetrics } from '../utils/graphMetrics';
+import { removeJoinedGroup } from '../utils/groups';
+import ConfirmModal from './ConfirmModal';
 import './Graph.css';
 
 const MIN_NODE_SIZE = 20;
@@ -480,16 +483,47 @@ function generateRevealOrder(nodes, links, startNodeId) {
   return order; // Array of waves (each wave = array of node IDs)
 }
 
-function Graph({ people, relationships, currentUserId, tooltipData, onShowTooltip, onHideTooltip, onOpenFeed, onNodeClick }) {
+function Graph({ people, relationships, currentUserId, tooltipData, onShowTooltip, onHideTooltip, onOpenFeed, onNodeClick, groupCode, groupName, groupCreatedBy, currentUser }) {
   const svgRef = useRef(null);
   const simulationRef = useRef(null);
   const zoomRef = useRef(null);
   const gRef = useRef(null);
   const hasFittedRef = useRef(false);
 
+  const navigate = useNavigate();
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
+  const [showDeleteGroup, setShowDeleteGroup] = useState(false);
+  const [deletePin, setDeletePin] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteError, setDeleteError] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const settingsRef = useRef(settings);
+
+  const isGroupCreator = currentUser && groupCreatedBy && currentUser.id === groupCreatedBy;
+
+  const handleDeleteGroup = async () => {
+    if (deleteConfirmText !== 'DELETE' || deletePin.length !== 4) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/groups/${groupCode}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_code: deletePin })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete group');
+      }
+      removeJoinedGroup(groupCode);
+      navigate('/', { replace: true });
+    } catch (err) {
+      setDeleteError(err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
   const nodePositionsRef = useRef(new Map()); // Persist node positions across renders
   const linkIdsRef = useRef(new Set()); // Track existing link IDs
   const animatedLinksRef = useRef(new Set()); // Track which links have been animated
@@ -1579,6 +1613,55 @@ function Graph({ people, relationships, currentUserId, tooltipData, onShowToolti
               </div>
 
               <button className="settings-reset" onClick={resetSettings}>Reset All</button>
+
+              {!!isGroupCreator && (
+                <button
+                  className="settings-delete-group"
+                  onClick={() => { setShowDeleteGroup(true); setDeletePin(''); setDeleteConfirmText(''); setDeleteError(null); }}
+                >
+                  Delete Group
+                </button>
+              )}
+            </div>
+          )}
+
+          {showDeleteGroup && (
+            <div className="delete-group-overlay" onClick={() => setShowDeleteGroup(false)}>
+              <div className="delete-group-modal" onClick={e => e.stopPropagation()}>
+                <h3>Delete "{groupName}"?</h3>
+                <p>This will permanently delete all members, relationships, and messages in this group.</p>
+                <label>
+                  Admin PIN:
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={deletePin}
+                    onChange={e => setDeletePin(e.target.value.replace(/\D/g, ''))}
+                    placeholder="4-digit PIN"
+                  />
+                </label>
+                <label>
+                  Type DELETE to confirm:
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={e => setDeleteConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                  />
+                </label>
+                {deleteError && <p className="delete-error">{deleteError}</p>}
+                <div className="delete-group-actions">
+                  <button onClick={() => setShowDeleteGroup(false)}>Cancel</button>
+                  <button
+                    className="delete-confirm-btn"
+                    onClick={handleDeleteGroup}
+                    disabled={deleting || deleteConfirmText !== 'DELETE' || deletePin.length !== 4}
+                  >
+                    {deleting ? 'Deleting...' : 'Delete Group'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

@@ -4,7 +4,7 @@ import './ChatroomPanel.css';
 
 const API_BASE = '/api';
 
-function ChatroomPanel({ currentUser, people, messages, setMessages, loading, savedScrollPos, onClose }) {
+function ChatroomPanel({ currentUser, people, messages, setMessages, loading, savedScrollPos, onClose, groupId }) {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);

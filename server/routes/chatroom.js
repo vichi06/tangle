@@ -7,8 +7,9 @@ const router = express.Router();
 // Get all ideas with sender info, vote counts, and reactions
 router.get('/', (req, res) => {
   const userId = req.query.userId;
+  const groupId = req.query.group_id;
   try {
-    const ideas = db.prepare(`
+    let ideasQuery = `
       SELECT
         i.*,
         p.first_name as sender_first_name,
@@ -20,9 +21,14 @@ router.get('/', (req, res) => {
       FROM ideas i
       JOIN people p ON i.sender_id = p.id
       LEFT JOIN idea_votes v ON i.id = v.idea_id
-      GROUP BY i.id
-      ORDER BY i.created_at ASC
-    `).all();
+    `;
+    const ideasParams = [];
+    if (groupId) {
+      ideasQuery += ' WHERE (p.group_id = ? OR p.is_system = 1)';
+      ideasParams.push(groupId);
+    }
+    ideasQuery += ' GROUP BY i.id ORDER BY i.created_at ASC';
+    const ideas = db.prepare(ideasQuery).all(...ideasParams);
 
     // Get all reactions grouped by message
     const allReactions = db.prepare(`
@@ -71,7 +77,7 @@ router.get('/', (req, res) => {
 // Consolidated user endpoint: cooldown, new-count, mentions-count
 router.get('/user/:userId', (req, res) => {
   const { userId } = req.params;
-  const { action, since } = req.query;
+  const { action, since, group_id } = req.query;
 
   if (action === 'cooldown') {
     return res.json({ canSend: true, remainingMs: 0 });
@@ -82,18 +88,30 @@ router.get('/user/:userId', (req, res) => {
       let query;
       let params;
 
-      if (since) {
-        query = `
-          SELECT COUNT(*) as count FROM ideas
-          WHERE created_at > ? AND sender_id != ?
-        `;
-        params = [since, userId];
+      if (group_id) {
+        if (since) {
+          query = `
+            SELECT COUNT(*) as count FROM ideas i
+            JOIN people p ON i.sender_id = p.id
+            WHERE i.created_at > ? AND i.sender_id != ? AND (p.group_id = ? OR p.is_system = 1)
+          `;
+          params = [since, userId, group_id];
+        } else {
+          query = `
+            SELECT COUNT(*) as count FROM ideas i
+            JOIN people p ON i.sender_id = p.id
+            WHERE i.sender_id != ? AND (p.group_id = ? OR p.is_system = 1)
+          `;
+          params = [userId, group_id];
+        }
       } else {
-        query = `
-          SELECT COUNT(*) as count FROM ideas
-          WHERE sender_id != ?
-        `;
-        params = [userId];
+        if (since) {
+          query = 'SELECT COUNT(*) as count FROM ideas WHERE created_at > ? AND sender_id != ?';
+          params = [since, userId];
+        } else {
+          query = 'SELECT COUNT(*) as count FROM ideas WHERE sender_id != ?';
+          params = [userId];
+        }
       }
 
       const result = db.prepare(query).get(...params);
@@ -106,11 +124,23 @@ router.get('/user/:userId', (req, res) => {
 
   if (action === 'mentions-count') {
     try {
-      const result = db.prepare(`
-        SELECT COUNT(*) as count FROM message_mentions
-        WHERE mentioned_user_id = ? AND seen = 0
-      `).get(userId);
+      let query;
+      let params;
 
+      if (group_id) {
+        query = `
+          SELECT COUNT(*) as count FROM message_mentions mm
+          JOIN ideas i ON mm.message_id = i.id
+          JOIN people p ON i.sender_id = p.id
+          WHERE mm.mentioned_user_id = ? AND mm.seen = 0 AND (p.group_id = ? OR p.is_system = 1)
+        `;
+        params = [userId, group_id];
+      } else {
+        query = 'SELECT COUNT(*) as count FROM message_mentions WHERE mentioned_user_id = ? AND seen = 0';
+        params = [userId];
+      }
+
+      const result = db.prepare(query).get(...params);
       res.json({ count: result.count });
     } catch (err) {
       res.status(500).json({ error: err.message });

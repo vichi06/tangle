@@ -6,10 +6,15 @@ const router = express.Router();
 // Get all people (exclude admin_code for security)
 router.get('/', (req, res) => {
   try {
-    const people = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_admin, is_pending, created_at
-      FROM people WHERE is_system = 0 ORDER BY last_name, first_name
-    `).all();
+    const { group_id } = req.query;
+    let query = 'SELECT id, first_name, last_name, avatar, bio, is_admin, is_pending, group_id, created_at FROM people WHERE is_system = 0';
+    const params = [];
+    if (group_id) {
+      query += ' AND group_id = ?';
+      params.push(group_id);
+    }
+    query += ' ORDER BY last_name, first_name';
+    const people = db.prepare(query).all(...params);
     res.json(people);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -34,15 +39,19 @@ router.get('/:id', (req, res) => {
 
 // Create person
 router.post('/', (req, res) => {
-  const { first_name, last_name, avatar, bio, is_pending } = req.body;
+  const { first_name, last_name, avatar, bio, is_pending, group_id, is_admin, admin_code } = req.body;
   if (!first_name || !last_name) {
     return res.status(400).json({ error: 'First name and last name are required' });
   }
   try {
-    const stmt = db.prepare('INSERT INTO people (first_name, last_name, avatar, bio, is_pending) VALUES (?, ?, ?, ?, ?)');
-    const result = stmt.run(first_name, last_name, avatar || null, bio || null, is_pending ? 1 : 0);
+    const stmt = db.prepare('INSERT INTO people (first_name, last_name, avatar, bio, is_pending, group_id, is_admin, admin_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    const result = stmt.run(
+      first_name, last_name, avatar || null, bio || null,
+      is_pending ? 1 : 0, group_id || null,
+      is_admin ? 1 : 0, admin_code || null
+    );
     const person = db.prepare(`
-      SELECT id, first_name, last_name, avatar, bio, is_admin, is_pending, created_at
+      SELECT id, first_name, last_name, avatar, bio, is_admin, is_pending, group_id, created_at
       FROM people WHERE id = ?
     `).get(result.lastInsertRowid);
     res.status(201).json(person);

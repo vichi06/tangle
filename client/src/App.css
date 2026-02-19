@@ -51,6 +51,22 @@
   gap: 12px;
 }
 
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-toggle {
+  font-size: 13px;
+  padding: 8px 14px;
+  opacity: 0.7;
+}
+
+.home-toggle:hover {
+  opacity: 1;
+}
+
 .lang-slider {
   display: flex;
   align-items: center;

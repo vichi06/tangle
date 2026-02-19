@@ -6,7 +6,8 @@ const router = express.Router();
 // Get all relationships with person names
 router.get('/', (req, res) => {
   try {
-    const relationships = db.prepare(`
+    const { group_id } = req.query;
+    let query = `
       SELECT
         r.*,
         p1.first_name as person1_first_name,
@@ -18,8 +19,14 @@ router.get('/', (req, res) => {
       FROM relationships r
       JOIN people p1 ON r.person1_id = p1.id
       JOIN people p2 ON r.person2_id = p2.id
-      ORDER BY r.created_at DESC
-    `).all();
+    `;
+    const params = [];
+    if (group_id) {
+      query += ' WHERE p1.group_id = ?';
+      params.push(group_id);
+    }
+    query += ' ORDER BY r.created_at DESC';
+    const relationships = db.prepare(query).all(...params);
     res.json(relationships);
   } catch (err) {
     res.status(500).json({ error: err.message });

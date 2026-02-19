@@ -303,7 +303,8 @@
   font-weight: 600;
 }
 
-.admin-verify-text {
+.admin-verify-text,
+.admin-setup-text {
   color: var(--text-secondary);
   font-size: 14px;
   margin-bottom: 8px;

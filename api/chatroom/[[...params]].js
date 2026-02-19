@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       const userId = params[1];
 
       if (req.method === 'GET') {
-        const { action, since } = req.query;
+        const { action, since, group_id } = req.query;
 
         if (action === 'cooldown') {
           return res.json({ canSend: true, remainingMs: 0 });
@@ -26,25 +26,47 @@ export default async function handler(req, res) {
 
         if (action === 'new-count') {
           let result;
-          if (since) {
-            result = await db.execute({
-              sql: 'SELECT COUNT(*) as count FROM ideas WHERE created_at > ? AND sender_id != ?',
-              args: [since, userId]
-            });
+          if (group_id) {
+            if (since) {
+              result = await db.execute({
+                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.created_at > ? AND i.sender_id != ? AND (p.group_id = ? OR p.is_system = 1)',
+                args: [since, userId, group_id]
+              });
+            } else {
+              result = await db.execute({
+                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.sender_id != ? AND (p.group_id = ? OR p.is_system = 1)',
+                args: [userId, group_id]
+              });
+            }
           } else {
-            result = await db.execute({
-              sql: 'SELECT COUNT(*) as count FROM ideas WHERE sender_id != ?',
-              args: [userId]
-            });
+            if (since) {
+              result = await db.execute({
+                sql: 'SELECT COUNT(*) as count FROM ideas WHERE created_at > ? AND sender_id != ?',
+                args: [since, userId]
+              });
+            } else {
+              result = await db.execute({
+                sql: 'SELECT COUNT(*) as count FROM ideas WHERE sender_id != ?',
+                args: [userId]
+              });
+            }
           }
           return res.json({ count: result.rows[0].count });
         }
 
         if (action === 'mentions-count') {
-          const result = await db.execute({
-            sql: 'SELECT COUNT(*) as count FROM message_mentions WHERE mentioned_user_id = ? AND seen = 0',
-            args: [userId]
-          });
+          let result;
+          if (group_id) {
+            result = await db.execute({
+              sql: 'SELECT COUNT(*) as count FROM message_mentions mm JOIN ideas i ON mm.message_id = i.id JOIN people p ON i.sender_id = p.id WHERE mm.mentioned_user_id = ? AND mm.seen = 0 AND (p.group_id = ? OR p.is_system = 1)',
+              args: [userId, group_id]
+            });
+          } else {
+            result = await db.execute({
+              sql: 'SELECT COUNT(*) as count FROM message_mentions WHERE mentioned_user_id = ? AND seen = 0',
+              args: [userId]
+            });
+          }
           return res.json({ count: result.rows[0].count });
         }
 
@@ -207,21 +229,23 @@ export default async function handler(req, res) {
     if (!params[0]) {
       if (req.method === 'GET') {
         const userId = req.query.userId;
-        const result = await db.execute(`
-          SELECT
-            i.*,
-            p.first_name as sender_first_name,
-            p.last_name as sender_last_name,
-            p.avatar as sender_avatar,
-            p.is_system as sender_is_system,
+        const groupId = req.query.group_id;
+        let ideasQuery = `
+          SELECT i.*, p.first_name as sender_first_name, p.last_name as sender_last_name,
+            p.avatar as sender_avatar, p.is_system as sender_is_system,
             COALESCE(SUM(CASE WHEN v.vote = 1 THEN 1 ELSE 0 END), 0) as upvotes,
             COALESCE(SUM(CASE WHEN v.vote = -1 THEN 1 ELSE 0 END), 0) as downvotes
-          FROM ideas i
-          JOIN people p ON i.sender_id = p.id
-          LEFT JOIN idea_votes v ON i.id = v.idea_id
-          GROUP BY i.id
-          ORDER BY i.created_at ASC
-        `);
+          FROM ideas i JOIN people p ON i.sender_id = p.id LEFT JOIN idea_votes v ON i.id = v.idea_id
+        `;
+        const ideasArgs = [];
+        if (groupId) {
+          ideasQuery += ' WHERE (p.group_id = ? OR p.is_system = 1)';
+          ideasArgs.push(groupId);
+        }
+        ideasQuery += ' GROUP BY i.id ORDER BY i.created_at ASC';
+        const result = groupId
+          ? await db.execute({ sql: ideasQuery, args: ideasArgs })
+          : await db.execute(ideasQuery);
 
         let ideas = result.rows;
 

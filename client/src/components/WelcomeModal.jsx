@@ -4,9 +4,12 @@ import './WelcomeModal.css';
 
 const API_BASE = '/api';
 
-function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
-  const [mode, setMode] = useState('select'); // 'select', 'create', 'admin-verify', or 'confirm'
+function WelcomeModal({ people, onSelect, onPersonAdded, inviteId, groupId, groupCode, groupName }) {
+  const isFirstInGroup = people.length === 0;
+  const [mode, setMode] = useState('select'); // 'select', 'create', 'admin-verify', 'confirm', 'admin-setup'
   const [newPerson, setNewPerson] = useState({ first_name: '', last_name: '', bio: '', avatar: '' });
+  const [adminPin, setAdminPin] = useState(['', '', '', '']);
+  const adminPinRefs = [useRef(), useRef(), useRef(), useRef()];
   const [pendingSelection, setPendingSelection] = useState(null);
   const [codeDigits, setCodeDigits] = useState(['', '', '', '']);
   const [verifying, setVerifying] = useState(false);
@@ -161,9 +164,38 @@ function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
     setMode('select');
   };
 
+  const handleAdminPinChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return;
+    const newPin = [...adminPin];
+    newPin[index] = value.slice(-1);
+    setAdminPin(newPin);
+    if (value && index < 3) {
+      adminPinRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handleAdminPinKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !adminPin[index] && index > 0) {
+      adminPinRefs[index - 1].current?.focus();
+    }
+  };
+
   const handleCreate = async () => {
     if (!newPerson.first_name.trim() || !newPerson.last_name.trim()) {
       setError('First and last name are required');
+      return;
+    }
+
+    // If first in group, require admin PIN setup
+    if (isFirstInGroup && mode !== 'admin-setup') {
+      setMode('admin-setup');
+      setAdminPin(['', '', '', '']);
+      setTimeout(() => adminPinRefs[0].current?.focus(), 100);
+      return;
+    }
+
+    if (isFirstInGroup && adminPin.some(d => !d)) {
+      setError('Please set a 4-digit PIN');
       return;
     }
 
@@ -171,15 +203,34 @@ function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
     setError(null);
 
     try {
+      const body = { ...newPerson };
+      if (groupId) body.group_id = groupId;
+      if (isFirstInGroup) {
+        body.is_admin = 1;
+        body.admin_code = adminPin.join('');
+      }
+
       const res = await fetch(`${API_BASE}/people`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPerson)
+        body: JSON.stringify(body)
       });
 
       if (!res.ok) throw new Error('Failed to create profile');
 
       const person = await res.json();
+
+      // Set group creator if first profile
+      if (isFirstInGroup && groupCode) {
+        try {
+          await fetch(`${API_BASE}/groups/${groupCode}/creator`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ created_by: person.id })
+          });
+        } catch {}
+      }
+
       onPersonAdded();
       onSelect(person);
     } catch (err) {
@@ -192,7 +243,7 @@ function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
   return (
     <div className="welcome-overlay">
       <div className="welcome-modal">
-        <h1>Welcome to CIV Tangle</h1>
+        <h1>Welcome to {groupName || 'Tangle'}</h1>
         <p className="welcome-subtitle">Who are you?</p>
 
         {mode === 'select' ? (
@@ -354,6 +405,37 @@ function WelcomeModal({ people, onSelect, onPersonAdded, inviteId }) {
               </button>
               <button className="create-btn" onClick={confirmSelection}>
                 Confirm
+              </button>
+            </div>
+          </div>
+        ) : mode === 'admin-setup' ? (
+          <div className="create-form">
+            <p className="admin-setup-text">As the first member, set a 4-digit admin PIN for this group:</p>
+            <div className="code-digits">
+              {adminPin.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={adminPinRefs[index]}
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={1}
+                  className="code-digit-input"
+                  value={digit}
+                  onChange={e => handleAdminPinChange(index, e.target.value)}
+                  onKeyDown={e => handleAdminPinKeyDown(index, e)}
+                />
+              ))}
+            </div>
+            {error && <p className="error-message">{error}</p>}
+            <div className="form-actions">
+              <button className="back-btn" onClick={() => setMode('create')}>Back</button>
+              <button
+                className="create-btn"
+                onClick={handleCreate}
+                disabled={loading || adminPin.some(d => !d)}
+              >
+                {loading ? 'Creating...' : 'Create & Join'}
               </button>
             </div>
           </div>

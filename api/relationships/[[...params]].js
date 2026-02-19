@@ -17,20 +17,24 @@ export default async function handler(req, res) {
     // GET/POST /api/relationships (no id)
     if (!id) {
       if (req.method === 'GET') {
-        const result = await db.execute(`
-          SELECT
-            r.*,
-            p1.first_name as person1_first_name,
-            p1.last_name as person1_last_name,
-            p1.avatar as person1_avatar,
-            p2.first_name as person2_first_name,
-            p2.last_name as person2_last_name,
-            p2.avatar as person2_avatar
-          FROM relationships r
-          JOIN people p1 ON r.person1_id = p1.id
-          JOIN people p2 ON r.person2_id = p2.id
-          ORDER BY r.created_at DESC
-        `);
+        const groupId = req.query.group_id;
+        let result;
+        if (groupId) {
+          result = await db.execute({
+            sql: `SELECT r.*, p1.first_name as person1_first_name, p1.last_name as person1_last_name, p1.avatar as person1_avatar,
+              p2.first_name as person2_first_name, p2.last_name as person2_last_name, p2.avatar as person2_avatar
+              FROM relationships r JOIN people p1 ON r.person1_id = p1.id JOIN people p2 ON r.person2_id = p2.id
+              WHERE p1.group_id = ? ORDER BY r.created_at DESC`,
+            args: [groupId]
+          });
+        } else {
+          result = await db.execute(`
+            SELECT r.*, p1.first_name as person1_first_name, p1.last_name as person1_last_name, p1.avatar as person1_avatar,
+              p2.first_name as person2_first_name, p2.last_name as person2_last_name, p2.avatar as person2_avatar
+            FROM relationships r JOIN people p1 ON r.person1_id = p1.id JOIN people p2 ON r.person2_id = p2.id
+            ORDER BY r.created_at DESC
+          `);
+        }
         return res.json(result.rows);
       }
 

@@ -28,6 +28,7 @@ const migrations = [
   { table: 'people', column: 'is_pending', sql: 'ALTER TABLE people ADD COLUMN is_pending INTEGER DEFAULT 0' },
   { table: 'relationships', column: 'is_pending', sql: 'ALTER TABLE relationships ADD COLUMN is_pending INTEGER DEFAULT 0' },
   { table: 'relationships', column: 'pending_by', sql: 'ALTER TABLE relationships ADD COLUMN pending_by INTEGER REFERENCES people(id) ON DELETE SET NULL' },
+  { table: 'people', column: 'group_id', sql: 'ALTER TABLE people ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE' },
 ];
 
 for (const { table, column, sql } of migrations) {
@@ -35,6 +36,26 @@ for (const { table, column, sql } of migrations) {
   if (!cols.some(c => c.name === column)) {
     db.exec(sql);
   }
+}
+
+// Create index on people.group_id (after migration adds the column)
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_people_group ON people(group_id)');
+} catch {}
+
+// Ensure default CIV group exists and assign ungrouped people
+const existingGroup = db.prepare('SELECT id FROM groups WHERE code = ?').get('civ-tangle-01');
+if (!existingGroup) {
+  const firstAdmin = db.prepare('SELECT id FROM people WHERE is_admin = 1 ORDER BY id LIMIT 1').get();
+  db.prepare('INSERT OR IGNORE INTO groups (name, code, created_by) VALUES (?, ?, ?)').run(
+    'CIV Tangle',
+    'civ-tangle-01',
+    firstAdmin ? firstAdmin.id : null
+  );
+}
+const civGroup = db.prepare('SELECT id FROM groups WHERE code = ?').get('civ-tangle-01');
+if (civGroup) {
+  db.prepare('UPDATE people SET group_id = ? WHERE group_id IS NULL').run(civGroup.id);
 }
 
 export default db;
