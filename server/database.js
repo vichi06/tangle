@@ -29,6 +29,7 @@ const migrations = [
   { table: 'relationships', column: 'is_pending', sql: 'ALTER TABLE relationships ADD COLUMN is_pending INTEGER DEFAULT 0' },
   { table: 'relationships', column: 'pending_by', sql: 'ALTER TABLE relationships ADD COLUMN pending_by INTEGER REFERENCES people(id) ON DELETE SET NULL' },
   { table: 'people', column: 'group_id', sql: 'ALTER TABLE people ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE' },
+  { table: 'ideas', column: 'group_id', sql: 'ALTER TABLE ideas ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL' },
 ];
 
 for (const { table, column, sql } of migrations) {
@@ -42,6 +43,12 @@ for (const { table, column, sql } of migrations) {
 try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_people_group ON people(group_id)');
 } catch {}
+
+// Ensure TanTan system bot user exists
+const botUser = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
+if (!botUser) {
+  db.prepare('INSERT INTO people (first_name, last_name, is_system) VALUES (?, ?, 1)').run('TanTan', 'Bot');
+}
 
 // Ensure default CIV group exists and assign ungrouped people
 const existingGroup = db.prepare('SELECT id FROM groups WHERE code = ?').get('civ-tangle-01');

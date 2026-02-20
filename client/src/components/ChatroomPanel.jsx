@@ -394,7 +394,8 @@ function ChatroomPanel({ currentUser, people, messages, setMessages, loading, sa
         body: JSON.stringify({
           sender_id: currentUser.id,
           content: text,
-          mentioned_ids
+          mentioned_ids,
+          group_id: groupId
         })
       });
 

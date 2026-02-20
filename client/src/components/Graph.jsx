@@ -599,7 +599,9 @@ function Graph({ people, relationships, currentUserId, tooltipData, onShowToolti
     const existingLinkIds = linkIdsRef.current;
     // Create a map for quick person lookup
     const peopleMap = new Map(people.map(p => [p.id, p]));
-    const links = relationships.map(rel => {
+    const links = relationships.filter(rel =>
+      peopleMap.has(rel.person1_id) && peopleMap.has(rel.person2_id)
+    ).map(rel => {
       const person1 = peopleMap.get(rel.person1_id);
       const person2 = peopleMap.get(rel.person2_id);
       const isPending = !!(person1?.is_pending || person2?.is_pending || rel.is_pending);

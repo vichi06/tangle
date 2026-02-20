@@ -29,13 +29,13 @@ export default async function handler(req, res) {
           if (group_id) {
             if (since) {
               result = await db.execute({
-                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.created_at > ? AND i.sender_id != ? AND (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))',
-                args: [since, userId, group_id, group_id]
+                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.created_at > ? AND i.sender_id != ? AND i.group_id = ?',
+                args: [since, userId, group_id]
               });
             } else {
               result = await db.execute({
-                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.sender_id != ? AND (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))',
-                args: [userId, group_id, group_id]
+                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.sender_id != ? AND i.group_id = ?',
+                args: [userId, group_id]
               });
             }
           } else {
@@ -58,8 +58,8 @@ export default async function handler(req, res) {
           let result;
           if (group_id) {
             result = await db.execute({
-              sql: 'SELECT COUNT(*) as count FROM message_mentions mm JOIN ideas i ON mm.message_id = i.id JOIN people p ON i.sender_id = p.id WHERE mm.mentioned_user_id = ? AND mm.seen = 0 AND (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))',
-              args: [userId, group_id, group_id]
+              sql: 'SELECT COUNT(*) as count FROM message_mentions mm JOIN ideas i ON mm.message_id = i.id WHERE mm.mentioned_user_id = ? AND mm.seen = 0 AND i.group_id = ?',
+              args: [userId, group_id]
             });
           } else {
             result = await db.execute({
@@ -83,10 +83,9 @@ export default async function handler(req, res) {
                     WHERE mentioned_user_id = ? AND seen = 0
                     AND message_id IN (
                       SELECT i.id FROM ideas i
-                      JOIN people p ON i.sender_id = p.id
-                      WHERE (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))
+                      WHERE i.group_id = ?
                     )`,
-              args: [userId, group_id, group_id]
+              args: [userId, group_id]
             });
           } else {
             await db.execute({
@@ -229,7 +228,7 @@ export default async function handler(req, res) {
               emoji: r.emoji,
               count: r.count,
               user_ids: userIds,
-              reacted: userIds.includes(user_id)
+              reacted: userIds.includes(parseInt(user_id))
             };
           })
         });
@@ -252,8 +251,8 @@ export default async function handler(req, res) {
         `;
         const ideasArgs = [];
         if (groupId) {
-          ideasQuery += ' WHERE (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))';
-          ideasArgs.push(groupId, groupId);
+          ideasQuery += ' WHERE i.group_id = ?';
+          ideasArgs.push(groupId);
         }
         ideasQuery += ' GROUP BY i.id ORDER BY i.created_at ASC';
         const result = groupId
@@ -307,7 +306,7 @@ export default async function handler(req, res) {
       }
 
       if (req.method === 'POST') {
-        const { sender_id, content, mentioned_ids } = req.body;
+        const { sender_id, content, mentioned_ids, group_id } = req.body;
 
         if (!sender_id) {
           return res.status(400).json({ error: 'Sender ID is required' });
@@ -332,8 +331,8 @@ export default async function handler(req, res) {
 
         // Insert new message
         const insert = await db.execute({
-          sql: 'INSERT INTO ideas (sender_id, content) VALUES (?, ?)',
-          args: [sender_id, content.trim()]
+          sql: 'INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)',
+          args: [sender_id, content.trim(), group_id || null]
         });
 
         const messageId = insert.lastInsertRowid;

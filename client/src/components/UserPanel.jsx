@@ -162,7 +162,7 @@ function UserPanel({ currentUser, people, relationships, onDataChange, onClose }
       const personRes = await fetch(`${API_BASE}/people`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newPerson, is_pending: true })
+        body: JSON.stringify({ ...newPerson, is_pending: true, group_id: managedUser.group_id })
       });
 
       if (!personRes.ok) throw new Error('Failed to create person');

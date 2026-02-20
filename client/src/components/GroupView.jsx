@@ -347,7 +347,7 @@ function GroupView() {
           currentUser={currentUser}
           people={people}
           relationships={relationships}
-          onDataChange={fetchData}
+          onDataChange={() => { fetchData(); fetchChatroomMessages(); }}
           onClose={() => setShowPanel(false)}
         />
       )}

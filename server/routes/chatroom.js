@@ -24,8 +24,8 @@ router.get('/', (req, res) => {
     `;
     const ideasParams = [];
     if (groupId) {
-      ideasQuery += ' WHERE (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))';
-      ideasParams.push(groupId, groupId);
+      ideasQuery += ' WHERE i.group_id = ?';
+      ideasParams.push(groupId);
     }
     ideasQuery += ' GROUP BY i.id ORDER BY i.created_at ASC';
     const ideas = db.prepare(ideasQuery).all(...ideasParams);
@@ -92,17 +92,15 @@ router.get('/user/:userId', (req, res) => {
         if (since) {
           query = `
             SELECT COUNT(*) as count FROM ideas i
-            JOIN people p ON i.sender_id = p.id
-            WHERE i.created_at > ? AND i.sender_id != ? AND (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))
+            WHERE i.created_at > ? AND i.sender_id != ? AND i.group_id = ?
           `;
-          params = [since, userId, group_id, group_id];
+          params = [since, userId, group_id];
         } else {
           query = `
             SELECT COUNT(*) as count FROM ideas i
-            JOIN people p ON i.sender_id = p.id
-            WHERE i.sender_id != ? AND (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))
+            WHERE i.sender_id != ? AND i.group_id = ?
           `;
-          params = [userId, group_id, group_id];
+          params = [userId, group_id];
         }
       } else {
         if (since) {
@@ -131,10 +129,9 @@ router.get('/user/:userId', (req, res) => {
         query = `
           SELECT COUNT(*) as count FROM message_mentions mm
           JOIN ideas i ON mm.message_id = i.id
-          JOIN people p ON i.sender_id = p.id
-          WHERE mm.mentioned_user_id = ? AND mm.seen = 0 AND (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))
+          WHERE mm.mentioned_user_id = ? AND mm.seen = 0 AND i.group_id = ?
         `;
-        params = [userId, group_id, group_id];
+        params = [userId, group_id];
       } else {
         query = 'SELECT COUNT(*) as count FROM message_mentions WHERE mentioned_user_id = ? AND seen = 0';
         params = [userId];
@@ -164,10 +161,9 @@ router.post('/user/:userId', (req, res) => {
           WHERE mentioned_user_id = ? AND seen = 0
           AND message_id IN (
             SELECT i.id FROM ideas i
-            JOIN people p ON i.sender_id = p.id
-            WHERE (p.group_id = ? OR (p.is_system = 1 AND (i.group_id = ? OR i.group_id IS NULL)))
+            WHERE i.group_id = ?
           )
-        `).run(userId, group_id, group_id);
+        `).run(userId, group_id);
       } else {
         db.prepare(`
           UPDATE message_mentions SET seen = 1
@@ -187,7 +183,7 @@ router.post('/user/:userId', (req, res) => {
 
 // Submit new message
 router.post('/', (req, res) => {
-  const { sender_id, content, mentioned_ids } = req.body;
+  const { sender_id, content, mentioned_ids, group_id } = req.body;
 
   // Validation
   if (!sender_id) {
@@ -210,8 +206,8 @@ router.post('/', (req, res) => {
     }
 
     // Insert new message
-    const stmt = db.prepare('INSERT INTO ideas (sender_id, content) VALUES (?, ?)');
-    const result = stmt.run(sender_id, content.trim());
+    const stmt = db.prepare('INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)');
+    const result = stmt.run(sender_id, content.trim(), group_id || null);
     const messageId = result.lastInsertRowid;
 
     // Insert mentions if any (exclude self-mentions)
@@ -340,7 +336,7 @@ router.post('/:messageId/action', (req, res) => {
           emoji: r.emoji,
           count: r.count,
           user_ids: r.user_ids.split(',').map(Number),
-          reacted: r.user_ids.split(',').map(Number).includes(user_id)
+          reacted: r.user_ids.split(',').map(Number).includes(parseInt(user_id))
         }))
       });
     } catch (err) {
