@@ -108,8 +108,6 @@ function HomePage() {
     <div className="home-page">
       <div className="home-container">
         <h1 className="home-title">Tangle</h1>
-        <p className="home-subtitle">Relationship graph groups</p>
-
         {groups.length > 0 ? (
           <div className="group-grid">
             {groups.map(group => (
