@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS relationships (
   context TEXT,
   is_pending INTEGER DEFAULT 0,
   pending_by INTEGER,
+  group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (person1_id) REFERENCES people(id) ON DELETE CASCADE,
   FOREIGN KEY (person2_id) REFERENCES people(id) ON DELETE CASCADE,

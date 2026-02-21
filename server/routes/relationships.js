@@ -22,7 +22,7 @@ router.get('/', (req, res) => {
     `;
     const params = [];
     if (group_id) {
-      query += ' WHERE p1.group_id = ?';
+      query += ' WHERE r.group_id = ?';
       params.push(group_id);
     }
     query += ' ORDER BY r.created_at DESC';
@@ -52,7 +52,7 @@ router.post('/', (req, res) => {
 
   try {
     // Check if people exist
-    const person1 = db.prepare('SELECT id, is_pending FROM people WHERE id = ?').get(p1);
+    const person1 = db.prepare('SELECT id, is_pending, group_id FROM people WHERE id = ?').get(p1);
     const person2 = db.prepare('SELECT id, is_pending FROM people WHERE id = ?').get(p2);
 
     if (!person1 || !person2) {
@@ -73,9 +73,9 @@ router.post('/', (req, res) => {
     const pendingBy = requester_id || person1_id;
 
     const stmt = db.prepare(
-      'INSERT INTO relationships (person1_id, person2_id, intensity, date, context, is_pending, pending_by) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO relationships (person1_id, person2_id, intensity, date, context, is_pending, pending_by, group_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    const result = stmt.run(p1, p2, intensity || 'kiss', date || null, context || null, isPending, pendingBy);
+    const result = stmt.run(p1, p2, intensity || 'kiss', date || null, context || null, isPending, pendingBy, person1.group_id || null);
 
     const relationship = db.prepare(`
       SELECT
@@ -98,7 +98,7 @@ router.post('/', (req, res) => {
         const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
         if (bot) {
           const msg = `🎉 ${relationship.person1_first_name} and ${relationship.person2_first_name} are now connected!`;
-          db.prepare('INSERT INTO ideas (sender_id, content) VALUES (?, ?)').run(bot.id, msg);
+          db.prepare('INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)').run(bot.id, msg, person1.group_id || null);
         }
       } catch (botErr) {
         console.error('Failed to insert bot message:', botErr);
@@ -160,11 +160,10 @@ router.post('/:id', (req, res) => {
     try {
       const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
       if (bot) {
-        const personGroup = db.prepare('SELECT group_id FROM people WHERE id = ?').get(relationship.person1_id);
         db.prepare('INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)').run(
           bot.id,
           `🎉 ${relationship.person1_first_name} and ${relationship.person2_first_name} are now connected!`,
-          personGroup?.group_id || null
+          relationship.group_id || null
         );
       }
     } catch (botErr) {

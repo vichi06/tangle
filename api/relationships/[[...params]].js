@@ -24,7 +24,7 @@ export default async function handler(req, res) {
             sql: `SELECT r.*, p1.first_name as person1_first_name, p1.last_name as person1_last_name, p1.avatar as person1_avatar,
               p2.first_name as person2_first_name, p2.last_name as person2_last_name, p2.avatar as person2_avatar
               FROM relationships r JOIN people p1 ON r.person1_id = p1.id JOIN people p2 ON r.person2_id = p2.id
-              WHERE p1.group_id = ? ORDER BY r.created_at DESC`,
+              WHERE r.group_id = ? ORDER BY r.created_at DESC`,
             args: [groupId]
           });
         } else {
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
           : [person2_id, person1_id];
 
         // Check if people exist
-        const person1 = await db.execute({ sql: 'SELECT id, is_pending FROM people WHERE id = ?', args: [p1] });
+        const person1 = await db.execute({ sql: 'SELECT id, is_pending, group_id FROM people WHERE id = ?', args: [p1] });
         const person2 = await db.execute({ sql: 'SELECT id, is_pending FROM people WHERE id = ?', args: [p2] });
 
         if (person1.rows.length === 0 || person2.rows.length === 0) {
@@ -76,9 +76,10 @@ export default async function handler(req, res) {
         const isPending = 1;
         const pendingBy = requester_id || person1_id;
 
+        const groupId = person1.rows[0].group_id || null;
         const result = await db.execute({
-          sql: 'INSERT INTO relationships (person1_id, person2_id, intensity, date, context, is_pending, pending_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          args: [p1, p2, intensity || 'kiss', date || null, context || null, isPending, pendingBy]
+          sql: 'INSERT INTO relationships (person1_id, person2_id, intensity, date, context, is_pending, pending_by, group_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          args: [p1, p2, intensity || 'kiss', date || null, context || null, isPending, pendingBy, groupId]
         });
 
         const relationship = await db.execute({
@@ -107,8 +108,8 @@ export default async function handler(req, res) {
               const rel = relationship.rows[0];
               const msg = `🎉 ${rel.person1_first_name} and ${rel.person2_first_name} are now connected!`;
               await db.execute({
-                sql: 'INSERT INTO ideas (sender_id, content) VALUES (?, ?)',
-                args: [botResult.rows[0].id, msg]
+                sql: 'INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)',
+                args: [botResult.rows[0].id, msg, groupId]
               });
             }
           } catch (botErr) {
@@ -244,14 +245,12 @@ export default async function handler(req, res) {
         const botResult = await db.execute("SELECT id FROM people WHERE is_system = 1");
         if (botResult.rows.length > 0) {
           const r = result.rows[0];
-          const groupResult = await db.execute({ sql: 'SELECT group_id FROM people WHERE id = ?', args: [r.person1_id] });
-          const groupId = groupResult.rows[0]?.group_id || null;
           await db.execute({
             sql: 'INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)',
             args: [
               botResult.rows[0].id,
               `🎉 ${r.person1_first_name} and ${r.person2_first_name} are now connected!`,
-              groupId
+              r.group_id || null
             ]
           });
         }
