@@ -23,13 +23,15 @@ const deleteCookie = (name) => {
 export function getJoinedGroups() {
   try {
     const raw = localStorage.getItem(GROUPS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const groups = raw ? JSON.parse(raw) : [];
+    return groups.filter(c => c && c !== 'undefined');
   } catch {
     return [];
   }
 }
 
 export function addJoinedGroup(code) {
+  if (!code || code === 'undefined') return;
   const groups = getJoinedGroups();
   if (!groups.includes(code)) {
     groups.push(code);

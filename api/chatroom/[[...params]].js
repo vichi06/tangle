@@ -10,7 +10,9 @@ export default async function handler(req, res) {
   }
 
   // Parse route: /api/chatroom, /api/chatroom/:id/action, /api/chatroom/user/:userId
-  const params = req.query.params || [];
+  const params = req.query.params
+    ? (Array.isArray(req.query.params) ? req.query.params : [req.query.params])
+    : req.url.split('?')[0].split('/').filter(Boolean).slice(2);
 
   try {
     // GET/POST /api/chatroom/user/:userId

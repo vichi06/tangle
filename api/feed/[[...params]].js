@@ -13,7 +13,9 @@ export default async function handler(req, res) {
   }
 
   // Parse route: /api/feed/cooldown/:userId, /api/feed/:relationshipId, /api/feed/:relationshipId/:commentId/vote
-  const params = req.query.params || [];
+  const params = req.query.params
+    ? (Array.isArray(req.query.params) ? req.query.params : [req.query.params])
+    : req.url.split('?')[0].split('/').filter(Boolean).slice(2);
 
   try {
     // GET /api/feed/cooldown/:userId

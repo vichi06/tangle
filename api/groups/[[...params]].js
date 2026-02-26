@@ -10,7 +10,9 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const params = req.query.params || [];
+  const params = req.query.params
+    ? (Array.isArray(req.query.params) ? req.query.params : [req.query.params])
+    : req.url.split('?')[0].split('/').filter(Boolean).slice(2);
   const code = params[0];
   const action = params[1]; // "creator"
 

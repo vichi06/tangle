@@ -10,7 +10,9 @@ export default async function handler(req, res) {
   }
 
   // Parse route: /api/relationships, /api/relationships/:id
-  const params = req.query.params || [];
+  const params = req.query.params
+    ? (Array.isArray(req.query.params) ? req.query.params : [req.query.params])
+    : req.url.split('?')[0].split('/').filter(Boolean).slice(2);
   const id = params[0];
 
   try {
