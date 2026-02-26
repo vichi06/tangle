@@ -1,5 +1,9 @@
 # Claude Code Context
 
+## Formatting
+
+- This project uses **single quotes** and its own Prettier config. Do NOT run `prettier --write` on files — it will reformat to double quotes and break the project's style.
+
 ## Project Overview
 
 CIV Tangle is a relationship graph visualization app. Users select their profile, then view/manage relationships on an interactive force-directed graph.

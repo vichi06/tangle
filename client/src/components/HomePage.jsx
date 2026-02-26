@@ -61,9 +61,9 @@ function HomePage() {
       if (!res.ok) {
         throw new Error('Group not found. Check the code and try again.');
       }
-      const group = await res.json();
-      addJoinedGroup(group.code);
-      navigate(`/g/${group.code}`);
+      await res.json();
+      addJoinedGroup(trimmed);
+      navigate(`/g/${trimmed}`);
     } catch (err) {
       setJoinError(err.message);
     } finally {
