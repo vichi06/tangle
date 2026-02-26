@@ -26,8 +26,10 @@ db.exec(schema);
 // Migrations: add columns that may be missing on older databases
 const migrations = [
   { table: 'people', column: 'is_pending', sql: 'ALTER TABLE people ADD COLUMN is_pending INTEGER DEFAULT 0' },
+  { table: 'people', column: 'is_system', sql: 'ALTER TABLE people ADD COLUMN is_system INTEGER DEFAULT 0' },
   { table: 'relationships', column: 'is_pending', sql: 'ALTER TABLE relationships ADD COLUMN is_pending INTEGER DEFAULT 0' },
   { table: 'relationships', column: 'pending_by', sql: 'ALTER TABLE relationships ADD COLUMN pending_by INTEGER REFERENCES people(id) ON DELETE SET NULL' },
+  { table: 'relationships', column: 'group_id', sql: 'ALTER TABLE relationships ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE' },
   { table: 'people', column: 'group_id', sql: 'ALTER TABLE people ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE' },
   { table: 'ideas', column: 'group_id', sql: 'ALTER TABLE ideas ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL' },
 ];

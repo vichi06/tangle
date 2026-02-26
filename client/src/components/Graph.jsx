@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import * as d3 from 'd3';
 import { calculateMetrics } from '../utils/graphMetrics';
 import { removeJoinedGroup } from '../utils/groups';
-import ConfirmModal from './ConfirmModal';
 import './Graph.css';
 
 const MIN_NODE_SIZE = 20;
