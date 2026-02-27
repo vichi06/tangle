@@ -40,6 +40,8 @@ File-based routing in `api/` folder:
 - `api/people/[id].js` -> GET/PUT/DELETE `/api/people/:id`
 - `api/people/[id]/verify-code.js` -> POST `/api/people/:id/verify-code`
 
+**Important — Vercel catch-all routing quirk:** `[[...params]].js` (optional catch-all) does **not** match zero-segment base paths like `/api/people` (no trailing segment). It only matches when at least one param is present. This is why each route directory has both an `index.js` (handles the base path) and a `[[...params]].js` (handles `:id` and sub-routes). **Do not remove the `index.js` files** — doing so breaks base-path API calls in production (e.g. fetching the people list on app load).
+
 ### Graph Component
 `Graph.jsx` is the main visualization using D3.js:
 - Force simulation with custom 1/r² repulsion + 1/r attraction physics
