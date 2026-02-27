@@ -127,7 +127,7 @@ router.post('/:id/confirm', (req, res) => {
     try {
       const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
       if (bot) {
-        db.prepare('INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)').run(
+        db.prepare('INSERT INTO messages (sender_id, content, group_id) VALUES (?, ?, ?)').run(
           bot.id,
           `👋 Welcome ${person.first_name} to the Tangle!`,
           person.group_id || null

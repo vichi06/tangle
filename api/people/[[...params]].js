@@ -118,7 +118,7 @@ export default async function handler(req, res) {
         const botResult = await db.execute("SELECT id FROM people WHERE is_system = 1");
         if (botResult.rows.length > 0) {
           await db.execute({
-            sql: 'INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)',
+            sql: 'INSERT INTO messages (sender_id, content, group_id) VALUES (?, ?, ?)',
             args: [
               botResult.rows[0].id,
               `👋 Welcome ${existing.rows[0].first_name} to the Tangle!`,

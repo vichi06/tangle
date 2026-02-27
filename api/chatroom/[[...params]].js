@@ -31,24 +31,24 @@ export default async function handler(req, res) {
           if (group_id) {
             if (since) {
               result = await db.execute({
-                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.created_at > ? AND i.sender_id != ? AND i.group_id = ?',
+                sql: 'SELECT COUNT(*) as count FROM messages i JOIN people p ON i.sender_id = p.id WHERE i.created_at > ? AND i.sender_id != ? AND i.group_id = ?',
                 args: [since, userId, group_id]
               });
             } else {
               result = await db.execute({
-                sql: 'SELECT COUNT(*) as count FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.sender_id != ? AND i.group_id = ?',
+                sql: 'SELECT COUNT(*) as count FROM messages i JOIN people p ON i.sender_id = p.id WHERE i.sender_id != ? AND i.group_id = ?',
                 args: [userId, group_id]
               });
             }
           } else {
             if (since) {
               result = await db.execute({
-                sql: 'SELECT COUNT(*) as count FROM ideas WHERE created_at > ? AND sender_id != ?',
+                sql: 'SELECT COUNT(*) as count FROM messages WHERE created_at > ? AND sender_id != ?',
                 args: [since, userId]
               });
             } else {
               result = await db.execute({
-                sql: 'SELECT COUNT(*) as count FROM ideas WHERE sender_id != ?',
+                sql: 'SELECT COUNT(*) as count FROM messages WHERE sender_id != ?',
                 args: [userId]
               });
             }
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
           let result;
           if (group_id) {
             result = await db.execute({
-              sql: 'SELECT COUNT(*) as count FROM message_mentions mm JOIN ideas i ON mm.message_id = i.id WHERE mm.mentioned_user_id = ? AND mm.seen = 0 AND i.group_id = ?',
+              sql: 'SELECT COUNT(*) as count FROM message_mentions mm JOIN messages i ON mm.message_id = i.id WHERE mm.mentioned_user_id = ? AND mm.seen = 0 AND i.group_id = ?',
               args: [userId, group_id]
             });
           } else {
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
               sql: `UPDATE message_mentions SET seen = 1
                     WHERE mentioned_user_id = ? AND seen = 0
                     AND message_id IN (
-                      SELECT i.id FROM ideas i
+                      SELECT i.id FROM messages i
                       WHERE i.group_id = ?
                     )`,
               args: [userId, group_id]
@@ -124,7 +124,7 @@ export default async function handler(req, res) {
         }
 
         const idea = await db.execute({
-          sql: 'SELECT id FROM ideas WHERE id = ?',
+          sql: 'SELECT id FROM messages WHERE id = ?',
           args: [id]
         });
         if (idea.rows.length === 0) {
@@ -141,15 +141,15 @@ export default async function handler(req, res) {
 
         if (vote === 0) {
           await db.execute({
-            sql: 'DELETE FROM idea_votes WHERE idea_id = ? AND user_id = ?',
+            sql: 'DELETE FROM message_votes WHERE message_id = ? AND user_id = ?',
             args: [id, user_id]
           });
         } else {
           await db.execute({
             sql: `
-              INSERT INTO idea_votes (idea_id, user_id, vote)
+              INSERT INTO message_votes (message_id, user_id, vote)
               VALUES (?, ?, ?)
-              ON CONFLICT(idea_id, user_id) DO UPDATE SET vote = excluded.vote
+              ON CONFLICT(message_id, user_id) DO UPDATE SET vote = excluded.vote
             `,
             args: [id, user_id, vote]
           });
@@ -160,14 +160,14 @@ export default async function handler(req, res) {
             SELECT
               COALESCE(SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END), 0) as upvotes,
               COALESCE(SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END), 0) as downvotes
-            FROM idea_votes
-            WHERE idea_id = ?
+            FROM message_votes
+            WHERE message_id = ?
           `,
           args: [id]
         });
 
         return res.json({
-          idea_id: parseInt(id),
+          message_id: parseInt(id),
           upvotes: counts.rows[0].upvotes,
           downvotes: counts.rows[0].downvotes,
           userVote: vote
@@ -180,7 +180,7 @@ export default async function handler(req, res) {
         }
 
         const message = await db.execute({
-          sql: 'SELECT id FROM ideas WHERE id = ?',
+          sql: 'SELECT id FROM messages WHERE id = ?',
           args: [id]
         });
         if (message.rows.length === 0) {
@@ -249,7 +249,7 @@ export default async function handler(req, res) {
             p.avatar as sender_avatar, p.is_system as sender_is_system,
             COALESCE(SUM(CASE WHEN v.vote = 1 THEN 1 ELSE 0 END), 0) as upvotes,
             COALESCE(SUM(CASE WHEN v.vote = -1 THEN 1 ELSE 0 END), 0) as downvotes
-          FROM ideas i JOIN people p ON i.sender_id = p.id LEFT JOIN idea_votes v ON i.id = v.idea_id
+          FROM messages i JOIN people p ON i.sender_id = p.id LEFT JOIN message_votes v ON i.id = v.message_id
         `;
         const ideasArgs = [];
         if (groupId) {
@@ -288,10 +288,10 @@ export default async function handler(req, res) {
         // If userId provided, get user's votes
         if (userId) {
           const userVotes = await db.execute({
-            sql: 'SELECT idea_id, vote FROM idea_votes WHERE user_id = ?',
+            sql: 'SELECT message_id, vote FROM message_votes WHERE user_id = ?',
             args: [userId]
           });
-          const voteMap = Object.fromEntries(userVotes.rows.map(v => [v.idea_id, v.vote]));
+          const voteMap = Object.fromEntries(userVotes.rows.map(v => [v.message_id, v.vote]));
           ideas = ideas.map(idea => ({
             ...idea,
             userVote: voteMap[idea.id] || 0
@@ -333,7 +333,7 @@ export default async function handler(req, res) {
 
         // Insert new message
         const insert = await db.execute({
-          sql: 'INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)',
+          sql: 'INSERT INTO messages (sender_id, content, group_id) VALUES (?, ?, ?)',
           args: [sender_id, content.trim(), group_id || null]
         });
 
@@ -359,7 +359,7 @@ export default async function handler(req, res) {
               p.first_name as sender_first_name,
               p.last_name as sender_last_name,
               p.avatar as sender_avatar
-            FROM ideas i
+            FROM messages i
             JOIN people p ON i.sender_id = p.id
             WHERE i.id = ?
           `,

@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS relationships (
 CREATE INDEX IF NOT EXISTS idx_rel_person1 ON relationships(person1_id);
 CREATE INDEX IF NOT EXISTS idx_rel_person2 ON relationships(person2_id);
 
-CREATE TABLE IF NOT EXISTS ideas (
+CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   sender_id INTEGER NOT NULL,
   content TEXT NOT NULL,
@@ -50,22 +50,22 @@ CREATE TABLE IF NOT EXISTS ideas (
   FOREIGN KEY (sender_id) REFERENCES people(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_ideas_sender ON ideas(sender_id);
-CREATE INDEX IF NOT EXISTS idx_ideas_created ON ideas(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at DESC);
 
-CREATE TABLE IF NOT EXISTS idea_votes (
+CREATE TABLE IF NOT EXISTS message_votes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  idea_id INTEGER NOT NULL,
+  message_id INTEGER NOT NULL,
   user_id INTEGER NOT NULL,
   vote INTEGER NOT NULL, -- 1 for upvote, -1 for downvote
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (idea_id) REFERENCES ideas(id) ON DELETE CASCADE,
+  FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES people(id) ON DELETE CASCADE,
-  UNIQUE(idea_id, user_id)
+  UNIQUE(message_id, user_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_idea_votes_idea ON idea_votes(idea_id);
-CREATE INDEX IF NOT EXISTS idx_idea_votes_user ON idea_votes(user_id);
+CREATE INDEX IF NOT EXISTS idx_message_votes_message ON message_votes(message_id);
+CREATE INDEX IF NOT EXISTS idx_message_votes_user ON message_votes(user_id);
 
 CREATE TABLE IF NOT EXISTS message_mentions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS message_mentions (
   mentioned_user_id INTEGER NOT NULL,
   seen INTEGER DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (message_id) REFERENCES ideas(id) ON DELETE CASCADE,
+  FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
   FOREIGN KEY (mentioned_user_id) REFERENCES people(id) ON DELETE CASCADE,
   UNIQUE(message_id, mentioned_user_id)
 );
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS message_reactions (
   user_id INTEGER NOT NULL,
   emoji TEXT NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (message_id) REFERENCES ideas(id) ON DELETE CASCADE,
+  FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES people(id) ON DELETE CASCADE,
   UNIQUE(message_id, user_id, emoji)
 );

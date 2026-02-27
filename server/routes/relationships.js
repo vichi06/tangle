@@ -98,7 +98,7 @@ router.post('/', (req, res) => {
         const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
         if (bot) {
           const msg = `🎉 ${relationship.person1_first_name} and ${relationship.person2_first_name} are now connected!`;
-          db.prepare('INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)').run(bot.id, msg, person1.group_id || null);
+          db.prepare('INSERT INTO messages (sender_id, content, group_id) VALUES (?, ?, ?)').run(bot.id, msg, person1.group_id || null);
         }
       } catch (botErr) {
         console.error('Failed to insert bot message:', botErr);
@@ -160,7 +160,7 @@ router.post('/:id', (req, res) => {
     try {
       const bot = db.prepare('SELECT id FROM people WHERE is_system = 1').get();
       if (bot) {
-        db.prepare('INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)').run(
+        db.prepare('INSERT INTO messages (sender_id, content, group_id) VALUES (?, ?, ?)').run(
           bot.id,
           `🎉 ${relationship.person1_first_name} and ${relationship.person2_first_name} are now connected!`,
           relationship.group_id || null

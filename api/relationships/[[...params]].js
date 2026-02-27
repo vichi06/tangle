@@ -110,7 +110,7 @@ export default async function handler(req, res) {
               const rel = relationship.rows[0];
               const msg = `🎉 ${rel.person1_first_name} and ${rel.person2_first_name} are now connected!`;
               await db.execute({
-                sql: 'INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)',
+                sql: 'INSERT INTO messages (sender_id, content, group_id) VALUES (?, ?, ?)',
                 args: [botResult.rows[0].id, msg, groupId]
               });
             }
@@ -248,7 +248,7 @@ export default async function handler(req, res) {
         if (botResult.rows.length > 0) {
           const r = result.rows[0];
           await db.execute({
-            sql: 'INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)',
+            sql: 'INSERT INTO messages (sender_id, content, group_id) VALUES (?, ?, ?)',
             args: [
               botResult.rows[0].id,
               `🎉 ${r.person1_first_name} and ${r.person2_first_name} are now connected!`,

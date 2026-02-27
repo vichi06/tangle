@@ -114,7 +114,7 @@ router.delete('/:code', (req, res) => {
     if (personIds.length > 0) {
       const placeholders = personIds.map(() => '?').join(',');
       db.prepare(`DELETE FROM relationships WHERE person1_id IN (${placeholders}) OR person2_id IN (${placeholders})`).run(...personIds, ...personIds);
-      db.prepare(`DELETE FROM ideas WHERE sender_id IN (${placeholders})`).run(...personIds);
+      db.prepare(`DELETE FROM messages WHERE sender_id IN (${placeholders})`).run(...personIds);
       db.prepare(`DELETE FROM people WHERE group_id = ?`).run(group.id);
     }
     db.prepare('DELETE FROM groups WHERE id = ?').run(group.id);

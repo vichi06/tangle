@@ -18,7 +18,7 @@ export default async function handler(req, res) {
           p.avatar as sender_avatar, p.is_system as sender_is_system,
           COALESCE(SUM(CASE WHEN v.vote = 1 THEN 1 ELSE 0 END), 0) as upvotes,
           COALESCE(SUM(CASE WHEN v.vote = -1 THEN 1 ELSE 0 END), 0) as downvotes
-        FROM ideas i JOIN people p ON i.sender_id = p.id LEFT JOIN idea_votes v ON i.id = v.idea_id
+        FROM messages i JOIN people p ON i.sender_id = p.id LEFT JOIN message_votes v ON i.id = v.message_id
       `;
       const ideasArgs = [];
       if (groupId) {
@@ -52,10 +52,10 @@ export default async function handler(req, res) {
 
       if (userId) {
         const userVotes = await db.execute({
-          sql: 'SELECT idea_id, vote FROM idea_votes WHERE user_id = ?',
+          sql: 'SELECT message_id, vote FROM message_votes WHERE user_id = ?',
           args: [userId]
         });
-        const voteMap = Object.fromEntries(userVotes.rows.map(v => [v.idea_id, v.vote]));
+        const voteMap = Object.fromEntries(userVotes.rows.map(v => [v.message_id, v.vote]));
         ideas = ideas.map(idea => ({ ...idea, userVote: voteMap[idea.id] || 0 }));
       }
 
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
       }
 
       const insert = await db.execute({
-        sql: 'INSERT INTO ideas (sender_id, content, group_id) VALUES (?, ?, ?)',
+        sql: 'INSERT INTO messages (sender_id, content, group_id) VALUES (?, ?, ?)',
         args: [sender_id, content.trim(), group_id || null]
       });
 
@@ -107,7 +107,7 @@ export default async function handler(req, res) {
 
       const message = await db.execute({
         sql: `SELECT i.*, p.first_name as sender_first_name, p.last_name as sender_last_name, p.avatar as sender_avatar
-          FROM ideas i JOIN people p ON i.sender_id = p.id WHERE i.id = ?`,
+          FROM messages i JOIN people p ON i.sender_id = p.id WHERE i.id = ?`,
         args: [messageId]
       });
 

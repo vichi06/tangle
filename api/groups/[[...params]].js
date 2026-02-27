@@ -148,7 +148,7 @@ export default async function handler(req, res) {
             args: [...personIds, ...personIds]
           });
           await db.execute({
-            sql: `DELETE FROM ideas WHERE sender_id IN (${placeholders})`,
+            sql: `DELETE FROM messages WHERE sender_id IN (${placeholders})`,
             args: personIds
           });
           await db.execute({
